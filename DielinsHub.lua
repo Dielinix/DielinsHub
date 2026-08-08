@@ -1,3 +1,67 @@
+-- ==========================================
+-- ПРОВЕРКА ВЕРСИИ И БЛОКИРОВКА ПРИ УСТАРЕНИИ
+-- ==========================================
+local CURRENT_VERSION = "1.0.0" 
+local VERSION_URL = "https://raw.githubusercontent.com/Dielinix/DielinsHub/refs/heads/main/version.txt"
+
+local function checkVersion()
+    local success, response = pcall(function()
+        return game:HttpGet(VERSION_URL)
+    end)
+
+    if not success then
+        warn("[DielinsHub]: Не удалось проверить наличие обновлений.")
+        return true 
+    end
+
+    local latestVersion = response:gsub("%s+", "")
+
+    if latestVersion ~= CURRENT_VERSION then
+        return false
+    end
+    
+    return true
+end
+
+if not checkVersion() then
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer
+    local playerGui = player:FindFirstChildOfClass("PlayerGui") or player:WaitForChild("PlayerGui")
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "UpdateRequiredGui"
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.ResetOnSpawn = false
+
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, 0, 1, 0)
+    Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    Frame.BorderSizePixel = 0
+    Frame.Parent = ScreenGui
+
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Size = UDim2.new(0, 650, 0, 250)
+    TextLabel.Position = UDim2.new(0.5, -325, 0.5, -125)
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TextLabel.TextScaled = true
+    TextLabel.Font = Enum.Font.GothamBold
+    TextLabel.Text = "⚠️ SCRIPT OUTDATED ⚠️\nThis version is no longer working. Please update!\nTelegram: t.me/dielinix\n\n⚠️ СКРИПТ УСТАРЕЛ ⚠️\nЭта версия больше не работает. Требуется обновление!\nСкачать новую версию: t.me/dielinix"
+    TextLabel.Parent = Frame
+
+    ScreenGui.Parent = playerGui
+
+    task.defer(function()
+        while true do
+            task.wait(9e9)
+        end
+    end)
+    return
+end
+
+-- ==========================================
+-- ОСНОВНОЙ КОД ХУБА
+-- ==========================================
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
