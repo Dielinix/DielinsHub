@@ -76,9 +76,8 @@ local Config = {
     OriginalAmbient = Lighting.Ambient,
     OriginalOutdoorAmbient = Lighting.OutdoorAmbient,
 
-    -- VIP Promo System
+    -- VIP Status System (Без старого промокода FreeDielin)
     VIPUnlocked = false,
-    PromoCode = "FreeDielin",
 
     -- Extra & VIP Troll Functions
     ClickTP_Enabled = false,
@@ -166,6 +165,7 @@ local function addGradient(parent, color1, color2, angle, isThemed)
     return grad
 end
 
+-- Кнопка открытия/закрытия главного меню с микро-анимацией прыжка
 local ToggleButton = Instance.new("ImageButton")
 ToggleButton.Name = "ToggleButton"
 ToggleButton.Size = UDim2.new(0, 50, 0, 50)
@@ -185,6 +185,13 @@ local ToggleStroke = Instance.new("UIStroke")
 ToggleStroke.Color = Color3.fromRGB(255, 255, 255)
 ToggleStroke.Thickness = 2
 ToggleStroke.Parent = ToggleButton
+
+ToggleButton.MouseEnter:Connect(function()
+    TweenService:Create(ToggleButton, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 56, 0, 56)}):Play()
+end)
+ToggleButton.MouseLeave:Connect(function()
+    TweenService:Create(ToggleButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, 50, 0, 50)}):Play()
+end)
 
 local StatsFrame = Instance.new("TextLabel")
 StatsFrame.Name = "StatsFrame"
@@ -346,8 +353,30 @@ local SubBtnCorner = Instance.new("UICorner")
 SubBtnCorner.CornerRadius = UDim.new(0, 4)
 SubBtnCorner.Parent = SubscribeBtn
 
+-- Кнопка полного закрытия/выключения скрипта в сайдбаре
+local FullCloseBtn = Instance.new("TextButton")
+FullCloseBtn.Size = UDim2.new(1, -16, 0, 24)
+FullCloseBtn.Position = UDim2.new(0, 8, 1, -32)
+FullCloseBtn.BackgroundColor3 = Color3.fromRGB(45, 20, 30)
+FullCloseBtn.Text = "❌ Выключить Скрипт"
+FullCloseBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+FullCloseBtn.Font = Config.Font_Main
+FullCloseBtn.TextSize = 10
+FullCloseBtn.Parent = Sidebar
+local FullCloseCorner = Instance.new("UICorner")
+FullCloseCorner.CornerRadius = UDim.new(0, 6)
+FullCloseCorner.Parent = FullCloseBtn
+
+FullCloseBtn.MouseButton1Click:Connect(function()
+    -- Красивая анимация исчезновения перед полным удалением
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+    TweenService:Create(MainFrame, tweenInfo, {Size = UDim2.new(0, 0, 0, 0), Position = MainFrame.Position + UDim2.new(0, 335, 0, 240)}):Play()
+    task.wait(0.3)
+    ScreenGui:Destroy()
+end)
+
 local TabContainer = Instance.new("Frame")
-TabContainer.Size = UDim2.new(1, -16, 1, -140)
+TabContainer.Size = UDim2.new(1, -16, 1, -170)
 TabContainer.Position = UDim2.new(0, 8, 0, 134)
 TabContainer.BackgroundTransparency = 1
 TabContainer.Parent = Sidebar
@@ -364,7 +393,7 @@ PagesContainer.BackgroundTransparency = 1
 PagesContainer.Parent = MainFrame
 
 -- ==========================================
--- СИСТЕМА ВКЛАДОК
+-- СИСТЕМА ВКЛАДОК С СВАЙП-АНИМАЦИЯМИ
 -- ==========================================
 local tabs = {}
 local pages = {}
@@ -373,6 +402,7 @@ local function createPage(name)
     local Page = Instance.new("ScrollingFrame")
     Page.Name = name .. "Page"
     Page.Size = UDim2.new(1, 0, 1, 0)
+    Page.Position = UDim2.new(1, 50, 0, 0) -- Начальная позиция для свайп-анимации появления
     Page.BackgroundTransparency = 1
     Page.ScrollBarThickness = 3
     Page.ScrollBarImageColor3 = Config.Theme_Color1
@@ -423,12 +453,30 @@ local function createTabButton(name, order)
             local g = btn:FindFirstChildOfClass("UIGradient")
             if g then g.Enabled = false end
         end
-        for _, page in pairs(pages) do page.Visible = false end
+        for _, page in pairs(pages) do 
+            page.Visible = false 
+        end
 
         TabBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         Gradient.Enabled = true
-        pages[name].Visible = true
+        
+        -- Плавная анимация свайпа/появления вкладки
+        local activePage = pages[name]
+        activePage.Visible = true
+        activePage.Position = UDim2.new(0.08, 0, 0, 0)
+        activePage.BackgroundTransparency = 0.8
+        
+        TweenService:Create(activePage, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Position = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 1
+        }):Play()
+
+        -- Микро-анимация нажатия на кнопку вкладки (скэлинг)
+        TweenService:Create(TabBtn, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -6, 0, 26)}):Play()
+        task.delay(0.1, function()
+            TweenService:Create(TabBtn, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 28)}):Play()
+        end)
     end)
 end
 
@@ -456,9 +504,10 @@ tabs["Combat"].TextColor3 = Color3.fromRGB(255, 255, 255)
 tabs["Combat"].BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 tabs["Combat"]:FindFirstChildOfClass("UIGradient").Enabled = true
 pages["Combat"].Visible = true
+pages["Combat"].Position = UDim2.new(0, 0, 0, 0)
 
 -- ==========================================
--- КОМПОНЕНТЫ ИНТЕРФЕЙСА
+-- КОМПОНЕНТЫ ИНТЕРФЕЙСА С НОВЫМИ АНИМАЦИЯМИ
 -- ==========================================
 local function createToggle(parent, text, featureId, initialValue, callback)
     local Frame = Instance.new("Frame")
@@ -539,8 +588,12 @@ local function createToggle(parent, text, featureId, initialValue, callback)
         state = newState
         local targetPos = state and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
         ToggleGrad.Enabled = state
-        if not state then ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 44, 60) else ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255) end
-        TweenService:Create(Circle, TweenInfo.new(0.2), {Position = targetPos}):Play()
+        if not state then 
+            TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 44, 60)}):Play() 
+        else 
+            TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play() 
+        end
+        TweenService:Create(Circle, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = targetPos}):Play()
         callback(state)
     end
 
@@ -728,7 +781,14 @@ local function createButton(parent, text, featureId, callback)
     BtnCorner.Parent = ActionBtn
     addGradient(ActionBtn, Config.Theme_Color1, Config.Theme_Color2, 0, true)
 
-    ActionBtn.MouseButton1Click:Connect(callback)
+    ActionBtn.MouseButton1Click:Connect(function()
+        -- Анимация сжатия при клике на обычные кнопки
+        TweenService:Create(ActionBtn, TweenInfo.new(0.1), {Size = UDim2.new(1, -129, 1, -14)}):Play()
+        task.delay(0.1, function()
+            TweenService:Create(ActionBtn, TweenInfo.new(0.1), {Size = UDim2.new(1, -125, 1, -12)}):Play()
+        end)
+        callback()
+    end)
 
     local ClearBindBtn = Instance.new("TextButton")
     ClearBindBtn.Size = UDim2.new(0, 20, 0, 20)
@@ -1410,7 +1470,6 @@ createSelector(uiPage, "UI Color Theme", {"Purple Pink", "Cyber Neon", "Crimson 
         Config.Theme_Color2 = Color3.fromRGB(255, 120, 0)
     end
     
-    -- Динамически обновляем градиенты для всего GUI
     local aliveGradients = {}
     for _, grad in ipairs(ThemedGradients) do
         if grad and grad.Parent then
@@ -1422,7 +1481,6 @@ createSelector(uiPage, "UI Color Theme", {"Purple Pink", "Cyber Neon", "Crimson 
         end
     end
     ThemedGradients = aliveGradients
-    
     StatsStroke.Color = Config.Theme_Color1
 end)
 
@@ -1435,71 +1493,13 @@ createButton(weatherPage, "Matrix World (Зеленая Матрица)", "Weath
 createButton(weatherPage, "Silent Hill Fog (Туман)", "WeatherFog", function() applyWeatherTheme("Foggy") end)
 
 -- ==========================================
--- VIP & TROLL FUNCTIONS
+-- VIP & TROLL FUNCTIONS (С ПОЛУПРОРАЧНЫМ ОВЕРЛЕЕМ ПРЕМИУМ ПОДПИСКИ)
 -- ==========================================
-local PromoLockFrame = Instance.new("Frame")
-PromoLockFrame.Size = UDim2.new(1, -6, 0, 140)
-PromoLockFrame.BackgroundColor3 = Color3.fromRGB(22, 24, 34)
-PromoLockFrame.Parent = vipPage
 
-local LockCorner = Instance.new("UICorner")
-LockCorner.CornerRadius = UDim.new(0, 10)
-LockCorner.Parent = PromoLockFrame
-
-local LockTitle = Instance.new("TextLabel")
-LockTitle.Size = UDim2.new(1, 0, 0, 25)
-LockTitle.Position = UDim2.new(0, 0, 0, 10)
-LockTitle.BackgroundTransparency = 1
-LockTitle.Text = "🔒 Доступ Заблокирован!"
-LockTitle.TextColor3 = Color3.fromRGB(255, 80, 80)
-LockTitle.Font = Config.Font_Main
-LockTitle.TextSize = 14
-LockTitle.Parent = PromoLockFrame
-
-local LockSub = Instance.new("TextLabel")
-LockSub.Size = UDim2.new(1, 0, 0, 20)
-LockSub.Position = UDim2.new(0, 0, 0, 32)
-LockSub.BackgroundTransparency = 1
-LockSub.Text = "Введите промокод для разблокировки VIP и Troll функций:"
-LockSub.TextColor3 = Color3.fromRGB(170, 175, 195)
-LockSub.Font = Config.Font_Main
-LockSub.TextSize = 10
-LockSub.Parent = PromoLockFrame
-
-local PromoBox = Instance.new("TextBox")
-PromoBox.Size = UDim2.new(0, 200, 0, 32)
-PromoBox.Position = UDim2.new(0.5, -105, 0, 58)
-PromoBox.BackgroundColor3 = Color3.fromRGB(30, 33, 48)
-PromoBox.PlaceholderText = "Введите промокод..."
-PromoBox.Text = ""
-PromoBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-PromoBox.Font = Config.Font_Main
-PromoBox.TextSize = 11
-PromoBox.Parent = PromoLockFrame
-
-local BoxCorner = Instance.new("UICorner")
-BoxCorner.CornerRadius = UDim.new(0, 6)
-BoxCorner.Parent = PromoBox
-
-local SubmitBtn = Instance.new("TextButton")
-SubmitBtn.Size = UDim2.new(0, 120, 0, 28)
-SubmitBtn.Position = UDim2.new(0.5, -60, 0, 98)
-SubmitBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-SubmitBtn.Text = "Активировать"
-SubmitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SubmitBtn.Font = Config.Font_Main
-SubmitBtn.TextSize = 11
-SubmitBtn.Parent = PromoLockFrame
-
-local SubCorner = Instance.new("UICorner")
-SubCorner.CornerRadius = UDim.new(0, 6)
-SubCorner.Parent = SubmitBtn
-addGradient(SubmitBtn, Config.Theme_Color1, Config.Theme_Color2, 0, true)
-
+-- Контейнер для VIP элементов (доступен для просмотра сквозь полупрозрачный оверлей, но заблокирован)
 local VipControlsFrame = Instance.new("Frame")
 VipControlsFrame.Size = UDim2.new(1, 0, 0, 0)
 VipControlsFrame.BackgroundTransparency = 1
-VipControlsFrame.Visible = false
 VipControlsFrame.Parent = vipPage
 
 local VipLayout = Instance.new("UIListLayout")
@@ -1511,41 +1511,101 @@ VipLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     VipControlsFrame.Size = UDim2.new(1, 0, 0, VipLayout.AbsoluteContentSize.Y)
 end)
 
-createToggle(VipControlsFrame, "Click Teleport (Ctrl + Click)", "ClickTP", Config.ClickTP_Enabled, function(v) Config.ClickTP_Enabled = v end)
-createToggle(VipControlsFrame, "Spinbot (Вращение)", "Spinbot", Config.Spin_Enabled, function(v) Config.Spin_Enabled = v end)
-createSlider(VipControlsFrame, "Spin Speed", 5, 100, Config.Spin_Speed, function(v) Config.Spin_Speed = v end)
-createToggle(VipControlsFrame, "Anti-AFK Protection", "AntiAFK", Config.AntiAFK_Enabled, function(v) Config.AntiAFK_Enabled = v end)
+createToggle(VipControlsFrame, "Click Teleport (Ctrl + Click)", "ClickTP", Config.ClickTP_Enabled, function(v) if Config.VIPUnlocked then Config.ClickTP_Enabled = v end end)
+createToggle(VipControlsFrame, "Spinbot (Вращение)", "Spinbot", Config.Spin_Enabled, function(v) if Config.VIPUnlocked then Config.Spin_Enabled = v end end)
+createSlider(VipControlsFrame, "Spin Speed", 5, 100, Config.Spin_Speed, function(v) if Config.VIPUnlocked then Config.Spin_Speed = v end end)
+createToggle(VipControlsFrame, "Anti-AFK Protection", "AntiAFK", Config.AntiAFK_Enabled, function(v) if Config.VIPUnlocked then Config.AntiAFK_Enabled = v end end)
 
-createToggle(VipControlsFrame, "1. Rainbow Character (Радужный)", "RainbowChar", Config.RainbowChar_Enabled, function(v) Config.RainbowChar_Enabled = v end)
-createToggle(VipControlsFrame, "2. Drunk Camera (Пьяная Камера)", "DrunkCam", Config.DrunkCam_Enabled, function(v) Config.DrunkCam_Enabled = v end)
-createToggle(VipControlsFrame, "3. Big Head (Огромные головы игроков)", "BigHead", Config.BigHead_Enabled, function(v) Config.BigHead_Enabled = v end)
-createToggle(VipControlsFrame, "4. Screen Shake (Тряска экрана)", "ScreenShake", Config.ScreenShake_Enabled, function(v) Config.ScreenShake_Enabled = v end)
-createToggle(VipControlsFrame, "5. Auto Clicker (Автокликер мыши)", "AutoClick", Config.AutoClick_Enabled, function(v) Config.AutoClick_Enabled = v end)
-createToggle(VipControlsFrame, "6. Super Jump VIP (Супер-прыжок)", "SuperJump", Config.SuperJump_Enabled, function(v) Config.SuperJump_Enabled = v end)
-createToggle(VipControlsFrame, "7. Fling Aura (Троллинг раскидыванием)", "FlingAura", Config.FlingAura_Enabled, function(v) Config.FlingAura_Enabled = v end)
-createToggle(VipControlsFrame, "8. Ragdoll Mode (Падение в рэгдолл)", "Ragdoll", Config.Ragdoll_Enabled, function(v) Config.Ragdoll_Enabled = v end)
-createToggle(VipControlsFrame, "9. Fake Chat Spam (Спам в чат)", "FakeChat", Config.FakeChat_Enabled, function(v) Config.FakeChat_Enabled = v end)
-createToggle(VipControlsFrame, "10. Invisible Arms (Невидимые руки)", "InvisArms", Config.InvisibleArms_Enabled, function(v) Config.InvisibleArms_Enabled = v end)
+createToggle(VipControlsFrame, "1. Rainbow Character (Радужный)", "RainbowChar", Config.RainbowChar_Enabled, function(v) if Config.VIPUnlocked then Config.RainbowChar_Enabled = v end end)
+createToggle(VipControlsFrame, "2. Drunk Camera (Пьяная Камера)", "DrunkCam", Config.DrunkCam_Enabled, function(v) if Config.VIPUnlocked then Config.DrunkCam_Enabled = v end end)
+createToggle(VipControlsFrame, "3. Big Head (Огромные головы игроков)", "BigHead", Config.BigHead_Enabled, function(v) if Config.VIPUnlocked then Config.BigHead_Enabled = v end end)
+createToggle(VipControlsFrame, "4. Screen Shake (Тряска экрана)", "ScreenShake", Config.ScreenShake_Enabled, function(v) if Config.VIPUnlocked then Config.ScreenShake_Enabled = v end end)
+createToggle(VipControlsFrame, "5. Auto Clicker (Автокликер мыши)", "AutoClick", Config.AutoClick_Enabled, function(v) if Config.VIPUnlocked then Config.AutoClick_Enabled = v end end)
+createToggle(VipControlsFrame, "6. Super Jump VIP (Супер-прыжок)", "SuperJump", Config.SuperJump_Enabled, function(v) if Config.VIPUnlocked then Config.SuperJump_Enabled = v end end)
+createToggle(VipControlsFrame, "7. Fling Aura (Троллинг раскидыванием)", "FlingAura", Config.FlingAura_Enabled, function(v) if Config.VIPUnlocked then Config.FlingAura_Enabled = v end end)
+createToggle(VipControlsFrame, "8. Ragdoll Mode (Падение в рэгдолл)", "Ragdoll", Config.Ragdoll_Enabled, function(v) if Config.VIPUnlocked then Config.Ragdoll_Enabled = v end end)
+createToggle(VipControlsFrame, "9. Fake Chat Spam (Спам в чат)", "FakeChat", Config.FakeChat_Enabled, function(v) if Config.VIPUnlocked then Config.FakeChat_Enabled = v end end)
+createToggle(VipControlsFrame, "10. Invisible Arms (Невидимые руки)", "InvisArms", Config.InvisibleArms_Enabled, function(v) if Config.VIPUnlocked then Config.InvisibleArms_Enabled = v end end)
 
-SubmitBtn.MouseButton1Click:Connect(function()
-    if PromoBox.Text == Config.PromoCode then
-        Config.VIPUnlocked = true
-        PromoLockFrame.Visible = false
-        VipControlsFrame.Visible = true
-    else
-        PromoBox.Text = ""
-        PromoBox.PlaceholderText = "Неверный Промокод!"
-        task.wait(1.5)
-        PromoBox.PlaceholderText = "Введите промокод..."
-    end
-end)
+-- Полупрозрачный оверлей поверх функций, сообщающий о необходимости Premium подписки
+local PremiumLockOverlay = Instance.new("Frame")
+PremiumLockOverlay.Size = UDim2.new(1, 0, 1, 0)
+PremiumLockOverlay.BackgroundColor3 = Color3.fromRGB(15, 17, 26)
+PremiumLockOverlay.BackgroundTransparency = 0.45 -- Прозрачный оверлей, чтобы функции были видны насквозь
+PremiumLockOverlay.ZIndex = 5
+PremiumLockOverlay.Parent = vipPage
+
+local LockCenterCard = Instance.new("Frame")
+LockCenterCard.Size = UDim2.new(0, 320, 0, 160)
+LockCenterCard.Position = UDim2.new(0.5, -160, 0.5, -80)
+LockCenterCard.BackgroundColor3 = Color3.fromRGB(22, 24, 34)
+LockCenterCard.BackgroundTransparency = 0.1
+LockCenterCard.ZIndex = 6
+LockCenterCard.Parent = PremiumLockOverlay
+
+local LockCardCorner = Instance.new("UICorner")
+LockCardCorner.CornerRadius = UDim.new(0, 12)
+LockCardCorner.Parent = LockCenterCard
+
+local LockCardStroke = Instance.new("UIStroke")
+LockCardStroke.Thickness = 2
+LockCardStroke.Color = Color3.fromRGB(255, 215, 0)
+LockCardStroke.Parent = LockCenterCard
+addGradient(LockCardStroke, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 100, 0), 45, false)
+
+local LockIcon = Instance.new("TextLabel")
+LockIcon.Size = UDim2.new(1, 0, 0, 35)
+LockIcon.Position = UDim2.new(0, 0, 0, 15)
+LockIcon.BackgroundTransparency = 1
+LockIcon.Text = "🔒"
+LockIcon.TextSize = 26
+LockIcon.ZIndex = 7
+LockIcon.Parent = LockCenterCard
+
+local LockMsgTitle = Instance.new("TextLabel")
+LockMsgTitle.Size = UDim2.new(1, 0, 0, 25)
+LockMsgTitle.Position = UDim2.new(0, 0, 0, 52)
+LockMsgTitle.BackgroundTransparency = 1
+LockMsgTitle.Text = "Требуется подписка Premium!"
+LockMsgTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+LockMsgTitle.Font = Config.Font_Main
+LockMsgTitle.TextSize = 14
+LockMsgTitle.ZIndex = 7
+LockMsgTitle.Parent = LockCenterCard
+
+local LockMsgSub = Instance.new("TextLabel")
+LockMsgSub.Size = UDim2.new(1, -20, 0, 35)
+LockMsgSub.Position = UDim2.new(0, 10, 0, 78)
+LockMsgSub.BackgroundTransparency = 1
+LockMsgSub.Text = "Функции ниже видны для ознакомления, но для их активации необходима активная подписка."
+LockMsgSub.TextColor3 = Color3.fromRGB(180, 185, 205)
+LockMsgSub.Font = Config.Font_Main
+LockMsgSub.TextSize = 10
+LockMsgSub.TextWrapped = true
+LockMsgSub.ZIndex = 7
+LockMsgSub.Parent = LockCenterCard
+
+local GoToSubBtn = Instance.new("TextButton")
+GoToSubBtn.Size = UDim2.new(0, 180, 0, 30)
+GoToSubBtn.Position = UDim2.new(0.5, -90, 0, 118)
+GoToSubBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+GoToSubBtn.Text = "Получить подписку"
+GoToSubBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+GoToSubBtn.Font = Config.Font_Main
+GoToSubBtn.TextSize = 11
+GoToSubBtn.ZIndex = 7
+GoToSubBtn.Parent = LockCenterCard
+local GoSubCorner = Instance.new("UICorner")
+GoSubCorner.CornerRadius = UDim.new(0, 6)
+GoSubCorner.Parent = GoToSubBtn
+addGradient(GoToSubBtn, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 120, 0), 0, false)
 
 -- ==========================================
--- СИСТЕМА ПОДПИСОК (НОВОЕ UI И ЛОГИКА)
+-- СИСТЕМА ПОДПИСОК (UI И ЛОГИКА АКТИВАЦИИ)
 -- ==========================================
 local SubOverlay = Instance.new("Frame")
 SubOverlay.Size = UDim2.new(1, -180, 1, 0)
-SubOverlay.Position = UDim2.new(0, 180, 0, 0)
+SubOverlay.Position = UDim2.new(1, 0, 0, 0) -- Сдвинуто для свайп-анимации выезда
 SubOverlay.BackgroundColor3 = Color3.fromRGB(14, 15, 20)
 SubOverlay.ZIndex = 10
 SubOverlay.Visible = false
@@ -1564,10 +1624,22 @@ CloseSubBtn.Parent = SubOverlay
 
 SubscribeBtn.MouseButton1Click:Connect(function()
     SubOverlay.Visible = true
+    SubOverlay.Position = UDim2.new(1, 0, 0, 0)
+    TweenService:Create(SubOverlay, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.new(0, 180, 0, 0)}):Play()
+end)
+
+GoToSubBtn.MouseButton1Click:Connect(function()
+    SubOverlay.Visible = true
+    SubOverlay.Position = UDim2.new(1, 0, 0, 0)
+    TweenService:Create(SubOverlay, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.new(0, 180, 0, 0)}):Play()
 end)
 
 CloseSubBtn.MouseButton1Click:Connect(function()
-    SubOverlay.Visible = false
+    local tw = TweenService:Create(SubOverlay, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Position = UDim2.new(1, 0, 0, 0)})
+    tw:Play()
+    tw.Completed:Connect(function()
+        SubOverlay.Visible = false
+    end)
 end)
 
 -- Карточка Premium
@@ -1729,7 +1801,7 @@ LinkBox.TextEditable = false
 LinkBox.ZIndex = 11
 LinkBox.Parent = SubOverlay
 
--- Логика проверки промокода
+-- Логика проверки подписки
 SubApplyBtn.MouseButton1Click:Connect(function()
     local code = SubPromoBox.Text
     if code == "Dielin123" then
@@ -1739,8 +1811,10 @@ SubApplyBtn.MouseButton1Click:Connect(function()
         Config.VIPUnlocked = true
         BadgeLabel.Text = "Premium Status"
         BadgeLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-        if PromoLockFrame then PromoLockFrame.Visible = false end
-        if VipControlsFrame then VipControlsFrame.Visible = true end
+        TweenService:Create(PremiumLockOverlay, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(LockCenterCard, TweenInfo.new(0.4), {Size = UDim2.new(0, 0, 0, 0), Position = LockCenterCard.Position + UDim2.new(0, 160, 0, 80)}):Play()
+        task.wait(0.4)
+        PremiumLockOverlay.Visible = false
     elseif code == "Dielin12345" then
         SubStatusMsg.Text = 'Поздравляем с покупкой "Platinum Status" вам теперь доступны новые функции.'
         SubStatusMsg.TextColor3 = Color3.fromRGB(200, 230, 255)
@@ -1748,8 +1822,10 @@ SubApplyBtn.MouseButton1Click:Connect(function()
         Config.VIPUnlocked = true
         BadgeLabel.Text = "Platinum Status"
         BadgeLabel.TextColor3 = Color3.fromRGB(200, 230, 255)
-        if PromoLockFrame then PromoLockFrame.Visible = false end
-        if VipControlsFrame then VipControlsFrame.Visible = true end
+        TweenService:Create(PremiumLockOverlay, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(LockCenterCard, TweenInfo.new(0.4), {Size = UDim2.new(0, 0, 0, 0), Position = LockCenterCard.Position + UDim2.new(0, 160, 0, 80)}):Play()
+        task.wait(0.4)
+        PremiumLockOverlay.Visible = false
     else
         SubStatusMsg.Text = "Неверный промокод!"
         SubStatusMsg.TextColor3 = Color3.fromRGB(255, 80, 80)
@@ -1761,44 +1837,46 @@ end)
 -- ИГРОВЫЕ ЦИКЛЫ ДЛЯ ТРОЛЛИНГА
 -- ==========================================
 RunService.RenderStepped:Connect(function()
-    if Config.RainbowChar_Enabled and LocalPlayer.Character then
-        local hue = tick() % 5 / 5
-        local col = Color3.fromHSV(hue, 1, 1)
-        for _, p in ipairs(LocalPlayer.Character:GetDescendants()) do
-            if p:IsA("BasePart") then p.Color = col end
-        end
-    end
-
-    if Config.DrunkCam_Enabled then
-        Camera.CFrame = Camera.CFrame * CFrame.Angles(0, 0, math.sin(tick() * 4) * 0.015)
-    end
-
-    if Config.BigHead_Enabled then
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
-                p.Character.Head.Size = Vector3.new(4, 4, 4)
+    if Config.VIPUnlocked then
+        if Config.RainbowChar_Enabled and LocalPlayer.Character then
+            local hue = tick() % 5 / 5
+            local col = Color3.fromHSV(hue, 1, 1)
+            for _, p in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if p:IsA("BasePart") then p.Color = col end
             end
         end
-    end
 
-    if Config.ScreenShake_Enabled then
-        Camera.CFrame = Camera.CFrame * CFrame.new(math.random(-8, 8)/400, math.random(-8, 8)/400, 0)
-    end
+        if Config.DrunkCam_Enabled then
+            Camera.CFrame = Camera.CFrame * CFrame.Angles(0, 0, math.sin(tick() * 4) * 0.015)
+        end
 
-    if Config.SuperJump_Enabled and LocalPlayer.Character then
-        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.JumpPower = 150 end
-    end
+        if Config.BigHead_Enabled then
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
+                    p.Character.Head.Size = Vector3.new(4, 4, 4)
+                end
+            end
+        end
 
-    if Config.Ragdoll_Enabled and LocalPlayer.Character then
-        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.PlatformStand = true end
-    end
+        if Config.ScreenShake_Enabled then
+            Camera.CFrame = Camera.CFrame * CFrame.new(math.random(-8, 8)/400, math.random(-8, 8)/400, 0)
+        end
 
-    if Config.InvisibleArms_Enabled and LocalPlayer.Character then
-        for _, p in ipairs(LocalPlayer.Character:GetDescendants()) do
-            if p.Name == "Left Arm" or p.Name == "Right Arm" or p.Name == "LeftHand" or p.Name == "RightHand" then
-                p.Transparency = 1
+        if Config.SuperJump_Enabled and LocalPlayer.Character then
+            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum.JumpPower = 150 end
+        end
+
+        if Config.Ragdoll_Enabled and LocalPlayer.Character then
+            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum.PlatformStand = true end
+        end
+
+        if Config.InvisibleArms_Enabled and LocalPlayer.Character then
+            for _, p in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if p.Name == "Left Arm" or p.Name == "Right Arm" or p.Name == "LeftHand" or p.Name == "RightHand" then
+                    p.Transparency = 1
+                end
             end
         end
     end
@@ -1807,7 +1885,7 @@ end)
 task.spawn(function()
     while true do
         task.wait(0.08)
-        if Config.AutoClick_Enabled then
+        if Config.VIPUnlocked and Config.AutoClick_Enabled then
             pcall(function()
                 mouse1click()
             end)
@@ -1816,7 +1894,7 @@ task.spawn(function()
 end)
 
 RunService.Heartbeat:Connect(function()
-    if Config.FlingAura_Enabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+    if Config.VIPUnlocked and Config.FlingAura_Enabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = LocalPlayer.Character.HumanoidRootPart
         hrp.AssemblyLinearVelocity = Vector3.new(math.random(-300, 300), 4000, math.random(-300, 300))
     end
@@ -1825,7 +1903,7 @@ end)
 task.spawn(function()
     while true do
         task.wait(6)
-        if Config.FakeChat_Enabled then
+        if Config.VIPUnlocked and Config.FakeChat_Enabled then
             pcall(function()
                 local args = { [1] = "dielin's Hub VIP Troll Activated! 😎", [2] = "All" }
                 game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents"):FindFirstChild("SayMessageRequest"):FireServer(unpack(args))
@@ -1911,7 +1989,7 @@ populateTeleportTab()
 -- ==========================================
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
-    if Config.ClickTP_Enabled and input.UserInputType == Enum.UserInputType.MouseButton1 and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+    if Config.VIPUnlocked and Config.ClickTP_Enabled and input.UserInputType == Enum.UserInputType.MouseButton1 and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
         local mouse = LocalPlayer:GetMouse()
         if mouse and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
@@ -1944,5 +2022,15 @@ end)
 local menuOpen = true
 ToggleButton.MouseButton1Click:Connect(function()
     menuOpen = not menuOpen
-    MainFrame.Visible = menuOpen
+    if menuOpen then
+        MainFrame.Visible = true
+        MainFrame.Size = UDim2.new(0, 0, 0, 0)
+        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 670, 0, 480)}):Play()
+    else
+        local tw = TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+        tw:Play()
+        tw.Completed:Connect(function()
+            if not menuOpen then MainFrame.Visible = false end
+        end)
+    end
 end)
