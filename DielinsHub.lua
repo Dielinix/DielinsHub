@@ -148,7 +148,9 @@ ScreenGui.Name = "DielinsHubGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = guiParent
 
-local function addGradient(parent, color1, color2, angle)
+local ThemedGradients = {}
+
+local function addGradient(parent, color1, color2, angle, isThemed)
     local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
     grad.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, color1 or Config.Theme_Color1),
@@ -156,6 +158,11 @@ local function addGradient(parent, color1, color2, angle)
     })
     grad.Rotation = angle or 45
     grad.Parent = parent
+    
+    if isThemed then
+        table.insert(ThemedGradients, grad)
+    end
+    
     return grad
 end
 
@@ -226,12 +233,15 @@ local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 670, 0, 480)
 MainFrame.Position = UDim2.new(0.5, -335, 0.5, -240)
-MainFrame.BackgroundColor3 = Color3.fromRGB(14, 15, 20)
+MainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+MainFrame.BackgroundTransparency = 0.15
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
+
+addGradient(MainFrame, Config.Theme_Color1, Config.Theme_Color2, 135, true)
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 16)
@@ -241,11 +251,12 @@ local MainStroke = Instance.new("UIStroke")
 MainStroke.Thickness = 2
 MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 MainStroke.Parent = MainFrame
-local globalMainGrad = addGradient(MainStroke, Config.Theme_Color1, Config.Theme_Color2, 90)
+local globalMainGrad = addGradient(MainStroke, Config.Theme_Color1, Config.Theme_Color2, 90, true)
 
 local Sidebar = Instance.new("Frame")
 Sidebar.Size = UDim2.new(0, 180, 1, 0)
 Sidebar.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+Sidebar.BackgroundTransparency = 0.3
 Sidebar.BorderSizePixel = 0
 Sidebar.Parent = MainFrame
 
@@ -261,7 +272,7 @@ Logo.TextColor3 = Color3.fromRGB(255, 255, 255)
 Logo.Font = Config.Font_Main
 Logo.TextSize = 20
 Logo.Parent = Sidebar
-addGradient(Logo, Config.Theme_Color1, Config.Theme_Color2, 0)
+addGradient(Logo, Config.Theme_Color1, Config.Theme_Color2, 0, true)
 
 local CreditLabel1 = Instance.new("TextLabel")
 CreditLabel1.Size = UDim2.new(1, 0, 0, 12)
@@ -284,7 +295,7 @@ CreditLabel2.TextSize = 9
 CreditLabel2.Parent = Sidebar
 
 local ProfileFrame = Instance.new("Frame")
-ProfileFrame.Size = UDim2.new(1, -16, 0, 64) -- Немного увеличено, чтобы вместить кнопку подписки
+ProfileFrame.Size = UDim2.new(1, -16, 0, 64) 
 ProfileFrame.Position = UDim2.new(0, 8, 0, 64)
 ProfileFrame.BackgroundColor3 = Color3.fromRGB(28, 30, 42)
 ProfileFrame.Parent = Sidebar
@@ -390,6 +401,8 @@ local function createTabButton(name, order)
     TabBtn.TextColor3 = Color3.fromRGB(150, 155, 175)
     TabBtn.Font = Config.Font_Main
     TabBtn.TextSize = 11
+    TabBtn.TextStrokeTransparency = 0.2
+    TabBtn.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     TabBtn.LayoutOrder = order
     TabBtn.BorderSizePixel = 0
     TabBtn.Parent = TabContainer
@@ -398,7 +411,7 @@ local function createTabButton(name, order)
     BtnCorner.CornerRadius = UDim.new(0, 8)
     BtnCorner.Parent = TabBtn
 
-    local Gradient = addGradient(TabBtn, Config.Theme_Color1, Config.Theme_Color2, 0)
+    local Gradient = addGradient(TabBtn, Config.Theme_Color1, Config.Theme_Color2, 0, true)
     Gradient.Enabled = false
 
     tabs[name] = TabBtn
@@ -440,6 +453,7 @@ createTabButton("FX Custom", 8)
 createTabButton("UI Theme", 9)
 
 tabs["Combat"].TextColor3 = Color3.fromRGB(255, 255, 255)
+tabs["Combat"].BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 tabs["Combat"]:FindFirstChildOfClass("UIGradient").Enabled = true
 pages["Combat"].Visible = true
 
@@ -506,7 +520,7 @@ local function createToggle(parent, text, featureId, initialValue, callback)
     ToggleCorner.CornerRadius = UDim.new(1, 0)
     ToggleCorner.Parent = ToggleBtn
 
-    local ToggleGrad = addGradient(ToggleBtn, Config.Theme_Color1, Config.Theme_Color2, 0)
+    local ToggleGrad = addGradient(ToggleBtn, Config.Theme_Color1, Config.Theme_Color2, 0, true)
     ToggleGrad.Enabled = initialValue
 
     local Circle = Instance.new("Frame")
@@ -525,7 +539,7 @@ local function createToggle(parent, text, featureId, initialValue, callback)
         state = newState
         local targetPos = state and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
         ToggleGrad.Enabled = state
-        if not state then ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 44, 60) end
+        if not state then ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 44, 60) else ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255) end
         TweenService:Create(Circle, TweenInfo.new(0.2), {Position = targetPos}):Play()
         callback(state)
     end
@@ -591,7 +605,7 @@ local function createSlider(parent, text, min, max, default, callback)
     Fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
     Fill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Fill.Parent = SliderBar
-    addGradient(Fill, Config.Theme_Color1, Config.Theme_Color2, 0)
+    addGradient(Fill, Config.Theme_Color1, Config.Theme_Color2, 0, true)
 
     local dragging = false
     local function updateInput(input)
@@ -712,7 +726,7 @@ local function createButton(parent, text, featureId, callback)
     local BtnCorner = Instance.new("UICorner")
     BtnCorner.CornerRadius = UDim.new(0, 6)
     BtnCorner.Parent = ActionBtn
-    addGradient(ActionBtn, Config.Theme_Color1, Config.Theme_Color2, 0)
+    addGradient(ActionBtn, Config.Theme_Color1, Config.Theme_Color2, 0, true)
 
     ActionBtn.MouseButton1Click:Connect(callback)
 
@@ -1395,8 +1409,20 @@ createSelector(uiPage, "UI Color Theme", {"Purple Pink", "Cyber Neon", "Crimson 
         Config.Theme_Color1 = Color3.fromRGB(255, 215, 0)
         Config.Theme_Color2 = Color3.fromRGB(255, 120, 0)
     end
-    addGradient(MainStroke, Config.Theme_Color1, Config.Theme_Color2, 90)
-    addGradient(Logo, Config.Theme_Color1, Config.Theme_Color2, 0)
+    
+    -- Динамически обновляем градиенты для всего GUI
+    local aliveGradients = {}
+    for _, grad in ipairs(ThemedGradients) do
+        if grad and grad.Parent then
+            grad.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Config.Theme_Color1),
+                ColorSequenceKeypoint.new(1, Config.Theme_Color2)
+            })
+            table.insert(aliveGradients, grad)
+        end
+    end
+    ThemedGradients = aliveGradients
+    
     StatsStroke.Color = Config.Theme_Color1
 end)
 
@@ -1468,7 +1494,7 @@ SubmitBtn.Parent = PromoLockFrame
 local SubCorner = Instance.new("UICorner")
 SubCorner.CornerRadius = UDim.new(0, 6)
 SubCorner.Parent = SubmitBtn
-addGradient(SubmitBtn, Config.Theme_Color1, Config.Theme_Color2, 0)
+addGradient(SubmitBtn, Config.Theme_Color1, Config.Theme_Color2, 0, true)
 
 local VipControlsFrame = Instance.new("Frame")
 VipControlsFrame.Size = UDim2.new(1, 0, 0, 0)
@@ -1554,7 +1580,7 @@ PremCard.Parent = SubOverlay
 local PremCorner = Instance.new("UICorner")
 PremCorner.CornerRadius = UDim.new(0, 8)
 PremCorner.Parent = PremCard
-addGradient(PremCard, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 140, 0), 45)
+addGradient(PremCard, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 140, 0), 45, false)
 
 local PremTitle = Instance.new("TextLabel")
 PremTitle.Size = UDim2.new(1, 0, 0, 20)
@@ -1599,7 +1625,7 @@ PlatCard.Parent = SubOverlay
 local PlatCorner = Instance.new("UICorner")
 PlatCorner.CornerRadius = UDim.new(0, 8)
 PlatCorner.Parent = PlatCard
-addGradient(PlatCard, Color3.fromRGB(200, 230, 255), Color3.fromRGB(255, 180, 255), 45)
+addGradient(PlatCard, Color3.fromRGB(200, 230, 255), Color3.fromRGB(255, 180, 255), 45, false)
 
 local PlatTitle = Instance.new("TextLabel")
 PlatTitle.Size = UDim2.new(1, 0, 0, 20)
@@ -1674,7 +1700,7 @@ SubApplyBtn.Parent = SubOverlay
 local SubApplyCorner = Instance.new("UICorner")
 SubApplyCorner.CornerRadius = UDim.new(0, 6)
 SubApplyCorner.Parent = SubApplyBtn
-addGradient(SubApplyBtn, Config.Theme_Color1, Config.Theme_Color2, 0)
+addGradient(SubApplyBtn, Config.Theme_Color1, Config.Theme_Color2, 0, true)
 
 local SubStatusMsg = Instance.new("TextLabel")
 SubStatusMsg.Size = UDim2.new(1, -40, 0, 40)
@@ -1828,7 +1854,7 @@ local function populateTeleportTab()
     local RefCorner = Instance.new("UICorner")
     RefCorner.CornerRadius = UDim.new(0, 8)
     RefCorner.Parent = RefBtn
-    addGradient(RefBtn, Config.Theme_Color1, Config.Theme_Color2, 0)
+    addGradient(RefBtn, Config.Theme_Color1, Config.Theme_Color2, 0, true)
 
     RefBtn.MouseButton1Click:Connect(populateTeleportTab)
 
@@ -1867,7 +1893,7 @@ local function populateTeleportTab()
             local TPCorner = Instance.new("UICorner")
             TPCorner.CornerRadius = UDim.new(0, 6)
             TPCorner.Parent = TPBtn
-            addGradient(TPBtn, Config.Theme_Color1, Config.Theme_Color2, 0)
+            addGradient(TPBtn, Config.Theme_Color1, Config.Theme_Color2, 0, true)
 
             TPBtn.MouseButton1Click:Connect(function()
                 if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
