@@ -7,12 +7,14 @@ local Lighting = game:GetService("Lighting")
 local CoreGui = game:GetService("CoreGui")
 local Stats = game:GetService("Stats")
 local SoundService = game:GetService("SoundService")
+local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 -- Таблица для очистки всех соединений при завершении
 local Connections = {}
+local SaveFilePath = "DielinsHub_SubData.json"
 
 -- Функция воспроизведения звука
 local function playSound(soundId)
@@ -257,12 +259,12 @@ table.insert(Connections, RunService.RenderStepped:Connect(function(dt)
     StatsFrame.Visible = Config.ShowStats
 end))
 
--- ТЕМНЫЙ ФОН GUI ДЛЯ УСТРАНЕНИЯ СЛИШКОМ ЯРКОГО СВЕЧЕНИЯ
+-- ТЕМНЫЙ ФОН GUI
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 670, 0, 480)
 MainFrame.Position = UDim2.new(0.5, -335, 0.5, -240)
-MainFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 28) -- Исправлено: темно-серый вместо ярко-белого
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
@@ -460,7 +462,6 @@ local function createTabButton(name, order)
     tabs[name] = TabBtn
 
     TabBtn.MouseButton1Click:Connect(function()
-        -- Звук переключения вкладки 123796710194563
         playSound(123796710194563)
 
         for tabName, btn in pairs(tabs) do
@@ -600,7 +601,6 @@ local function createToggle(parent, text, featureId, initialValue, callback)
 
     local function setToggleState(newState)
         state = newState
-        -- Звук переключения любой функции 8968249849
         playSound(8968249849)
 
         local targetPos = state and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
@@ -1542,7 +1542,7 @@ createButton(weatherPage, "Matrix World (Зеленая Матрица)", "Weath
 createButton(weatherPage, "Silent Hill Fog (Туман)", "WeatherFog", function() applyWeatherTheme("Foggy") end)
 
 -- ==========================================
--- VIP & TROLL FUNCTIONS (С ПОЛУПРОЗРАЧНЫМ ОВЕРЛЕЕМ)
+-- VIP & TROLL FUNCTIONS (С НЕПРОЗРАЧНЫМ ОВЕРЛЕЕМ)
 -- ==========================================
 
 local VipControlsFrame = Instance.new("Frame")
@@ -1575,18 +1575,18 @@ createToggle(VipControlsFrame, "8. Ragdoll Mode (Падение в рэгдол�
 createToggle(VipControlsFrame, "9. Fake Chat Spam (Спам в чат)", "FakeChat", Config.FakeChat_Enabled, function(v) if Config.VIPUnlocked then Config.FakeChat_Enabled = v end end)
 createToggle(VipControlsFrame, "10. Invisible Arms (Невидимые руки)", "InvisArms", Config.InvisibleArms_Enabled, function(v) if Config.VIPUnlocked then Config.InvisibleArms_Enabled = v end end)
 
--- ЧЕРНО-ПОЛУПРОЗРАЧНЫЙ ОВЕРЛЕЙ БЛОКИРОВКИ ВКЛАДКИ VIP
+-- ЧЕРНЫЙ НЕПРОЗРАЧНЫЙ ОВЕРЛЕЙ БЛОКИРОВКИ ВКЛАДКИ VIP
 local PremiumLockOverlay = Instance.new("Frame")
 PremiumLockOverlay.Size = UDim2.new(1, 0, 1, 0)
-PremiumLockOverlay.BackgroundColor3 = Color3.fromRGB(10, 12, 18)
-PremiumLockOverlay.BackgroundTransparency = 0.35 -- Черно-прозрачный оверлей
+PremiumLockOverlay.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
+PremiumLockOverlay.BackgroundTransparency = 0 -- Абсолютно сплошной фоновый оверлей
 PremiumLockOverlay.ZIndex = 5
 PremiumLockOverlay.Parent = vipPage
 
 local LockCenterCard = Instance.new("Frame")
 LockCenterCard.Size = UDim2.new(0, 340, 0, 160)
 LockCenterCard.Position = UDim2.new(0.5, -170, 0.5, -80)
-LockCenterCard.BackgroundColor3 = Color3.fromRGB(20, 22, 32)
+LockCenterCard.BackgroundColor3 = Color3.fromRGB(24, 26, 38)
 LockCenterCard.ZIndex = 6
 LockCenterCard.Parent = PremiumLockOverlay
 
@@ -1624,7 +1624,7 @@ local LockMsgSub = Instance.new("TextLabel")
 LockMsgSub.Size = UDim2.new(1, -20, 0, 35)
 LockMsgSub.Position = UDim2.new(0, 10, 0, 75)
 LockMsgSub.BackgroundTransparency = 1
-LockMsgSub.Text = "Функции видны для ознакомления. Для разблокировки необходима активная подписка Premium или Platinum."
+LockMsgSub.Text = "Вкладка VIP заблокирована. Для разблокировки всех эксклюзивных функций необходимо приобрести статус Premium или Platinum."
 LockMsgSub.TextColor3 = Color3.fromRGB(180, 185, 205)
 LockMsgSub.Font = Config.Font_Main
 LockMsgSub.TextSize = 10
@@ -1636,7 +1636,7 @@ local GoToSubBtn = Instance.new("TextButton")
 GoToSubBtn.Size = UDim2.new(0, 180, 0, 30)
 GoToSubBtn.Position = UDim2.new(0.5, -90, 0, 118)
 GoToSubBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-GoToSubBtn.Text = "Получить подписку"
+GoToSubBtn.Text = "Купить подписку"
 GoToSubBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 GoToSubBtn.Font = Config.Font_Main
 GoToSubBtn.TextSize = 11
@@ -1648,7 +1648,7 @@ GoSubCorner.Parent = GoToSubBtn
 addGradient(GoToSubBtn, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 120, 0), 0, false)
 
 -- ==========================================
--- СИСТЕМА ПОДПИСОК (UI И ЛОГИКА АКТИВАЦИИ)
+-- СИСТЕМА ПОДПИСОК (UI И ЛОГИКА АКТИВАЦИИ/СОХРАНЕНИЯ)
 -- ==========================================
 local SubOverlay = Instance.new("Frame")
 SubOverlay.Size = UDim2.new(1, -180, 1, 0)
@@ -1848,11 +1848,46 @@ LinkBox.TextEditable = false
 LinkBox.ZIndex = 11
 LinkBox.Parent = SubOverlay
 
--- Логика проверки подписки
+-- ФУНКЦИИ СОХРАНЕНИЯ И ЗАГРУЗКИ ПОДПИСКИ
+local function saveSubscriptionData(tier)
+    if writefile then
+        pcall(function()
+            local data = {
+                VIPUnlocked = true,
+                Tier = tier,
+                RoleText = tier .. " Status",
+                RoleColor = tier == "Platinum" and {200, 230, 255} or {255, 215, 0}
+            }
+            writefile(SaveFilePath, HttpService:JSONEncode(data))
+        end)
+    end
+end
+
+local function loadSubscriptionData()
+    if isfile and readfile and isfile(SaveFilePath) then
+        local success, data = pcall(function()
+            return HttpService:JSONDecode(readfile(SaveFilePath))
+        end)
+        if success and type(data) == "table" and data.VIPUnlocked then
+            Config.VIPUnlocked = true
+            local roleText = data.RoleText or "Premium Status"
+            local colT = data.RoleColor or {255, 215, 0}
+            local roleCol = Color3.fromRGB(colT[1], colT[2], colT[3])
+
+            BadgeLabel.Text = roleText
+            BadgeLabel.TextColor3 = roleCol
+            PremiumLockOverlay.Visible = false
+        end
+    end
+end
+
+-- Автозагрузка подписки при запуске
+loadSubscriptionData()
+
+-- Логика проверки и активации подписки
 SubApplyBtn.MouseButton1Click:Connect(function()
     local code = SubPromoBox.Text
     if code == "Dielin123" then
-        -- Звук активации Premium 17161225362
         playSound(17161225362)
 
         SubStatusMsg.Text = 'Поздравляем с покупкой "Premium Status" вам теперь доступны новые функции.'
@@ -1862,13 +1897,14 @@ SubApplyBtn.MouseButton1Click:Connect(function()
         BadgeLabel.Text = "Premium Status"
         BadgeLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
         
+        saveSubscriptionData("Premium")
+
         TweenService:Create(PremiumLockOverlay, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
         TweenService:Create(LockCenterCard, TweenInfo.new(0.4), {Size = UDim2.new(0, 0, 0, 0), Position = LockCenterCard.Position + UDim2.new(0, 170, 0, 80)}):Play()
         task.wait(0.4)
         PremiumLockOverlay.Visible = false
 
     elseif code == "Dielin12345" then
-        -- Звук активации Platinum 127675253015979
         playSound(127675253015979)
 
         SubStatusMsg.Text = 'Поздравляем с покупкой "Platinum Status" вам теперь доступны новые функции.'
@@ -1878,13 +1914,14 @@ SubApplyBtn.MouseButton1Click:Connect(function()
         BadgeLabel.Text = "Platinum Status"
         BadgeLabel.TextColor3 = Color3.fromRGB(200, 230, 255)
         
+        saveSubscriptionData("Platinum")
+
         TweenService:Create(PremiumLockOverlay, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
         TweenService:Create(LockCenterCard, TweenInfo.new(0.4), {Size = UDim2.new(0, 0, 0, 0), Position = LockCenterCard.Position + UDim2.new(0, 170, 0, 80)}):Play()
         task.wait(0.4)
         PremiumLockOverlay.Visible = false
 
     else
-        -- Звук неверного промокода 106796270505945
         playSound(106796270505945)
 
         SubStatusMsg.Text = "Неверный промокод!"
@@ -2104,7 +2141,6 @@ end)
 -- ПОЛНОЕ ОТКЛЮЧЕНИЕ / ОЧИСТКА СКРИПТА
 -- ==========================================
 local function UnloadScript()
-    -- 1. Отключение всех Listeners & RenderStepped циклов
     for _, conn in ipairs(Connections) do
         if conn and conn.Connected then
             pcall(function() conn:Disconnect() end)
@@ -2112,7 +2148,6 @@ local function UnloadScript()
     end
     Connections = {}
 
-    -- 2. Очистка ESP, Drawings и Highlight
     for uId, tracer in pairs(DrawingCache) do
         pcall(function() tracer:Remove() end)
     end
@@ -2136,13 +2171,11 @@ local function UnloadScript()
         end
     end
 
-    -- 3. Очистка кастомных эффектов FX
     if currentTrail then currentTrail:Destroy() end
     if currentAtt0 then currentAtt0:Destroy() end
     if currentAtt1 then currentAtt1:Destroy() end
     if currentParticle then currentParticle:Destroy() end
 
-    -- 4. Сброс настроек освещения
     pcall(function()
         Lighting.Ambient = Config.OriginalAmbient
         Lighting.OutdoorAmbient = Config.OriginalOutdoorAmbient
@@ -2152,7 +2185,6 @@ local function UnloadScript()
         resetSky()
     end)
 
-    -- 5. Восстановление свойств локального игрока
     if LocalPlayer.Character then
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if hum then
@@ -2168,7 +2200,6 @@ local function UnloadScript()
         end
     end
 
-    -- 6. Удаление всех интерфейсов
     pcall(function() ScreenGui:Destroy() end)
 end
 
