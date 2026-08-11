@@ -234,7 +234,7 @@ local function showNotification(title, message, color)
         MsgLbl.ZIndex = 101
         MsgLbl.Parent = NotifFrame
 
-        playSound(106796270505945)
+        playSound(98797174600699)
 
         TweenService:Create(NotifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
             Position = UDim2.new(1, -290, 0.8, 0)
@@ -2428,9 +2428,4 @@ local function UnloadScript()
     pcall(function() ScreenGui:Destroy() end)
 end
 
-FullCloseBtn.MouseButton1Click:Connect(function()
-    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-    TweenService:Create(MainFrame, tweenInfo, {Size = UDim2.new(0, 0, 0, 0), Position = MainFrame.Position + UDim2.new(0, 335, 0, 240)}):Play()
-    task.wait(0.3)
-    UnloadScript()
-end)
+FullCloseBtn.MouseButton1Click:Connect(UnloadScript)
