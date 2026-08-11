@@ -440,6 +440,19 @@ local SubBtnCorner = Instance.new("UICorner")
 SubBtnCorner.CornerRadius = UDim.new(0, 4)
 SubBtnCorner.Parent = SubscribeBtn
 
+-- Обновление состояния кнопки подписки
+local function updateSubscribeButton(tier)
+    if tier == "Platinum" then
+        SubscribeBtn.Visible = false
+    elseif tier == "Premium" then
+        SubscribeBtn.Text = "Upgrade"
+        SubscribeBtn.Visible = true
+    else
+        SubscribeBtn.Text = "Subscribe"
+        SubscribeBtn.Visible = true
+    end
+end
+
 -- Кнопка полного закрытия/выключения скрипта
 local FullCloseBtn = Instance.new("TextButton")
 FullCloseBtn.Size = UDim2.new(1, -16, 0, 24)
@@ -805,6 +818,8 @@ local function createSelector(parent, text, options, defaultIndex, callback)
     NextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     NextBtn.Font = Config.Font_Main
     NextBtn.TextSize = 12
+    NextBtn.TextStrokeTransparency = 0
+    NextBtn.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     NextBtn.Parent = Frame
 
     local OptionLabel = Instance.new("TextLabel")
@@ -815,6 +830,8 @@ local function createSelector(parent, text, options, defaultIndex, callback)
     OptionLabel.TextColor3 = Color3.fromRGB(0, 220, 255)
     OptionLabel.Font = Config.Font_Main
     OptionLabel.TextSize = 11
+    OptionLabel.TextStrokeTransparency = 0
+    OptionLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     OptionLabel.TextXAlignment = Enum.TextXAlignment.Center
     OptionLabel.Parent = Frame
 
@@ -826,6 +843,8 @@ local function createSelector(parent, text, options, defaultIndex, callback)
     PrevBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     PrevBtn.Font = Config.Font_Main
     PrevBtn.TextSize = 12
+    PrevBtn.TextStrokeTransparency = 0
+    PrevBtn.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     PrevBtn.Parent = Frame
 
     local function updateSelector()
@@ -872,10 +891,13 @@ local function createButton(parent, text, featureId, callback)
     ActionBtn.Size = UDim2.new(1, -125, 1, -12)
     ActionBtn.Position = UDim2.new(0, 6, 0, 6)
     ActionBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    ActionBtn.BackgroundTransparency = 0.2
     ActionBtn.Text = text
     ActionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     ActionBtn.Font = Config.Font_Main
     ActionBtn.TextSize = 11
+    ActionBtn.TextStrokeTransparency = 0
+    ActionBtn.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     ActionBtn.Parent = Frame
 
     local BtnCorner = Instance.new("UICorner")
@@ -1816,10 +1838,13 @@ local SubApplyBtn = Instance.new("TextButton")
 SubApplyBtn.Size = UDim2.new(0, 150, 0, 35)
 SubApplyBtn.Position = UDim2.new(0.5, -75, 0, 205)
 SubApplyBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+SubApplyBtn.BackgroundTransparency = 0.2
 SubApplyBtn.Text = "Активировать"
 SubApplyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 SubApplyBtn.Font = Config.Font_Main
 SubApplyBtn.TextSize = 14
+SubApplyBtn.TextStrokeTransparency = 0
+SubApplyBtn.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 SubApplyBtn.ZIndex = 11
 SubApplyBtn.Parent = SubOverlay
 local SubApplyCorner = Instance.new("UICorner")
@@ -1928,6 +1953,8 @@ local function loadSubscriptionData()
 
                     BadgeLabel.Text = roleText
                     BadgeLabel.TextColor3 = roleCol
+
+                    updateSubscribeButton(data.Tier)
                 else
                     showNotification("Безопасность", "Файл подписки поврежден или подделан!", Color3.fromRGB(255, 80, 80))
                 end
@@ -1953,6 +1980,7 @@ SubApplyBtn.MouseButton1Click:Connect(function()
         BadgeLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
         
         saveSubscriptionData("Premium")
+        updateSubscribeButton("Premium")
         showNotification("Успех!", "Вам открыт доступ к Premium функциям!", Color3.fromRGB(255, 215, 0))
 
     elseif code == "Dielin12345" then
@@ -1966,6 +1994,7 @@ SubApplyBtn.MouseButton1Click:Connect(function()
         BadgeLabel.TextColor3 = Color3.fromRGB(200, 230, 255)
         
         saveSubscriptionData("Platinum")
+        updateSubscribeButton("Platinum")
         showNotification("Успех!", "Вам открыт доступ к Platinum функциям!", Color3.fromRGB(200, 230, 255))
 
     else
@@ -2018,9 +2047,12 @@ end
 local ConfigNameBox = Instance.new("TextBox")
 ConfigNameBox.Size = UDim2.new(1, -6, 0, 36)
 ConfigNameBox.BackgroundColor3 = Color3.fromRGB(22, 24, 34)
+ConfigNameBox.BackgroundTransparency = 0.2
 ConfigNameBox.PlaceholderText = "Введите название конфига..."
 ConfigNameBox.Text = ""
 ConfigNameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+ConfigNameBox.TextStrokeTransparency = 0
+ConfigNameBox.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 ConfigNameBox.Font = Config.Font_Main
 ConfigNameBox.TextSize = 12
 ConfigNameBox.Parent = configsPage
@@ -2212,10 +2244,13 @@ local function populateTeleportTab()
     local RefBtn = Instance.new("TextButton")
     RefBtn.Size = UDim2.new(1, -6, 0, 32)
     RefBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    RefBtn.BackgroundTransparency = 0.2
     RefBtn.Text = "Refresh Player List"
     RefBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     RefBtn.Font = Config.Font_Main
     RefBtn.TextSize = 12
+    RefBtn.TextStrokeTransparency = 0
+    RefBtn.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     RefBtn.Parent = tpPage
 
     local RefCorner = Instance.new("UICorner")
@@ -2251,10 +2286,13 @@ local function populateTeleportTab()
             TPBtn.Size = UDim2.new(0, 80, 0, 24)
             TPBtn.Position = UDim2.new(1, -88, 0.5, -12)
             TPBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            TPBtn.BackgroundTransparency = 0.2
             TPBtn.Text = "Teleport"
             TPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
             TPBtn.Font = Config.Font_Main
             TPBtn.TextSize = 10
+            TPBtn.TextStrokeTransparency = 0
+            TPBtn.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
             TPBtn.Parent = PFrame
 
             local TPCorner = Instance.new("UICorner")
