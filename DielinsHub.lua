@@ -15,6 +15,7 @@ local Camera = workspace.CurrentCamera
 -- Таблица для очистки всех соединений при завершении
 local Connections = {}
 local SaveFilePath = "DielinsHub_SubData.json"
+local ConfigsFilePath = "DielinsHub_SavedConfigs.json"
 
 -- Функция воспроизведения звука
 local function playSound(soundId)
@@ -186,6 +187,69 @@ local function addGradient(parent, color1, color2, angle, isThemed)
     end
     
     return grad
+end
+
+-- Система всплывающих уведомлений
+local function showNotification(title, message, color)
+    task.spawn(function()
+        local NotifFrame = Instance.new("Frame")
+        NotifFrame.Size = UDim2.new(0, 280, 0, 60)
+        NotifFrame.Position = UDim2.new(1, 10, 0.8, 0)
+        NotifFrame.BackgroundColor3 = Color3.fromRGB(22, 24, 34)
+        NotifFrame.BorderSizePixel = 0
+        NotifFrame.ZIndex = 100
+        NotifFrame.Parent = ScreenGui
+
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 8)
+        Corner.Parent = NotifFrame
+
+        local Stroke = Instance.new("UIStroke")
+        Stroke.Thickness = 1.5
+        Stroke.Color = color or Config.Theme_Color1
+        Stroke.Parent = NotifFrame
+
+        local TitleLbl = Instance.new("TextLabel")
+        TitleLbl.Size = UDim2.new(1, -16, 0, 20)
+        TitleLbl.Position = UDim2.new(0, 10, 0, 5)
+        TitleLbl.BackgroundTransparency = 1
+        TitleLbl.Text = title
+        TitleLbl.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+        TitleLbl.Font = Config.Font_Main
+        TitleLbl.TextSize = 12
+        TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
+        TitleLbl.ZIndex = 101
+        TitleLbl.Parent = NotifFrame
+
+        local MsgLbl = Instance.new("TextLabel")
+        MsgLbl.Size = UDim2.new(1, -16, 0, 30)
+        MsgLbl.Position = UDim2.new(0, 10, 0, 25)
+        MsgLbl.BackgroundTransparency = 1
+        MsgLbl.Text = message
+        MsgLbl.TextColor3 = Color3.fromRGB(200, 205, 220)
+        MsgLbl.Font = Config.Font_Main
+        MsgLbl.TextSize = 10
+        MsgLbl.TextWrapped = true
+        MsgLbl.TextXAlignment = Enum.TextXAlignment.Left
+        MsgLbl.ZIndex = 101
+        MsgLbl.Parent = NotifFrame
+
+        playSound(106796270505945)
+
+        TweenService:Create(NotifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Position = UDim2.new(1, -290, 0.8, 0)
+        }):Play()
+
+        task.wait(3.5)
+
+        local tw = TweenService:Create(NotifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+            Position = UDim2.new(1, 10, 0.8, 0)
+        })
+        tw:Play()
+        tw.Completed:Connect(function()
+            NotifFrame:Destroy()
+        end)
+    end)
 end
 
 -- Кнопка открытия/закрытия главного меню
@@ -504,6 +568,7 @@ local vipPage = createPage("VIP & Fun")
 local weatherPage = createPage("Weather")
 local customPage = createPage("FX Custom")
 local uiPage = createPage("UI Theme")
+local configsPage = createPage("Configs")
 
 createTabButton("Combat", 1)
 createTabButton("Visuals", 2)
@@ -514,6 +579,7 @@ createTabButton("VIP & Fun", 6)
 createTabButton("Weather", 7)
 createTabButton("FX Custom", 8)
 createTabButton("UI Theme", 9)
+createTabButton("Configs", 10)
 
 tabs["Combat"].TextColor3 = Color3.fromRGB(255, 255, 255)
 tabs["Combat"].BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -524,7 +590,7 @@ pages["Combat"].Position = UDim2.new(0, 0, 0, 0)
 -- ==========================================
 -- КОМПОНЕНТЫ ИНТЕРФЕЙСА
 -- ==========================================
-local function createToggle(parent, text, featureId, initialValue, callback)
+local function createToggle(parent, text, featureId, initialValue, callback, isVipFeature)
     local Frame = Instance.new("Frame")
     Frame.Size = UDim2.new(1, -6, 0, 38)
     Frame.BackgroundColor3 = Color3.fromRGB(22, 24, 34)
@@ -600,6 +666,11 @@ local function createToggle(parent, text, featureId, initialValue, callback)
     local state = initialValue
 
     local function setToggleState(newState)
+        if isVipFeature and not Config.VIPUnlocked then
+            showNotification("Ошибка Доступа", "Для использования этой функции необходимо купить подписку!", Color3.fromRGB(255, 80, 80))
+            return
+        end
+
         state = newState
         playSound(8968249849)
 
@@ -740,7 +811,7 @@ local function createSelector(parent, text, options, defaultIndex, callback)
     OptionLabel.Size = UDim2.new(0, 120, 0, 24)
     OptionLabel.Position = UDim2.new(1, -154, 0.5, -12)
     OptionLabel.BackgroundTransparency = 1
-    OptionLabel.Text = options[currentIdx]
+    OptionLabel.Text = options[currentIdx] or ""
     OptionLabel.TextColor3 = Color3.fromRGB(0, 220, 255)
     OptionLabel.Font = Config.Font_Main
     OptionLabel.TextSize = 11
@@ -758,19 +829,33 @@ local function createSelector(parent, text, options, defaultIndex, callback)
     PrevBtn.Parent = Frame
 
     local function updateSelector()
-        OptionLabel.Text = options[currentIdx]
-        callback(options[currentIdx], currentIdx)
+        if #options > 0 then
+            OptionLabel.Text = tostring(options[currentIdx])
+            callback(options[currentIdx], currentIdx)
+        else
+            OptionLabel.Text = "Пусто"
+        end
     end
 
     NextBtn.MouseButton1Click:Connect(function()
+        if #options == 0 then return end
         currentIdx = currentIdx % #options + 1
         updateSelector()
     end)
 
     PrevBtn.MouseButton1Click:Connect(function()
+        if #options == 0 then return end
         currentIdx = (currentIdx - 2) % #options + 1
         updateSelector()
     end)
+
+    return {
+        SetOptions = function(newOpts, newIdx)
+            options = newOpts
+            currentIdx = newIdx or 1
+            updateSelector()
+        end
+    }
 end
 
 local function createButton(parent, text, featureId, callback)
@@ -1542,9 +1627,8 @@ createButton(weatherPage, "Matrix World (Зеленая Матрица)", "Weath
 createButton(weatherPage, "Silent Hill Fog (Туман)", "WeatherFog", function() applyWeatherTheme("Foggy") end)
 
 -- ==========================================
--- VIP & TROLL FUNCTIONS (С НЕПРОЗРАЧНЫМ ОВЕРЛЕЕМ)
+-- VIP & TROLL FUNCTIONS
 -- ==========================================
-
 local VipControlsFrame = Instance.new("Frame")
 VipControlsFrame.Size = UDim2.new(1, 0, 0, 0)
 VipControlsFrame.BackgroundTransparency = 1
@@ -1559,96 +1643,24 @@ VipLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     VipControlsFrame.Size = UDim2.new(1, 0, 0, VipLayout.AbsoluteContentSize.Y)
 end)
 
-createToggle(VipControlsFrame, "Click Teleport (Ctrl + Click)", "ClickTP", Config.ClickTP_Enabled, function(v) if Config.VIPUnlocked then Config.ClickTP_Enabled = v end end)
-createToggle(VipControlsFrame, "Spinbot (Вращение)", "Spinbot", Config.Spin_Enabled, function(v) if Config.VIPUnlocked then Config.Spin_Enabled = v end end)
+createToggle(VipControlsFrame, "Click Teleport (Ctrl + Click)", "ClickTP", Config.ClickTP_Enabled, function(v) Config.ClickTP_Enabled = v end, true)
+createToggle(VipControlsFrame, "Spinbot (Вращение)", "Spinbot", Config.Spin_Enabled, function(v) Config.Spin_Enabled = v end, true)
 createSlider(VipControlsFrame, "Spin Speed", 5, 100, Config.Spin_Speed, function(v) if Config.VIPUnlocked then Config.Spin_Speed = v end end)
-createToggle(VipControlsFrame, "Anti-AFK Protection", "AntiAFK", Config.AntiAFK_Enabled, function(v) if Config.VIPUnlocked then Config.AntiAFK_Enabled = v end end)
+createToggle(VipControlsFrame, "Anti-AFK Protection", "AntiAFK", Config.AntiAFK_Enabled, function(v) Config.AntiAFK_Enabled = v end, true)
 
-createToggle(VipControlsFrame, "1. Rainbow Character (Радужный)", "RainbowChar", Config.RainbowChar_Enabled, function(v) if Config.VIPUnlocked then Config.RainbowChar_Enabled = v end end)
-createToggle(VipControlsFrame, "2. Drunk Camera (Пьяная Камера)", "DrunkCam", Config.DrunkCam_Enabled, function(v) if Config.VIPUnlocked then Config.DrunkCam_Enabled = v end end)
-createToggle(VipControlsFrame, "3. Big Head (Огромные головы игроков)", "BigHead", Config.BigHead_Enabled, function(v) if Config.VIPUnlocked then Config.BigHead_Enabled = v end end)
-createToggle(VipControlsFrame, "4. Screen Shake (Тряска экрана)", "ScreenShake", Config.ScreenShake_Enabled, function(v) if Config.VIPUnlocked then Config.ScreenShake_Enabled = v end end)
-createToggle(VipControlsFrame, "5. Auto Clicker (Автокликер мыши)", "AutoClick", Config.AutoClick_Enabled, function(v) if Config.VIPUnlocked then Config.AutoClick_Enabled = v end end)
-createToggle(VipControlsFrame, "6. Super Jump VIP (Супер-прыжок)", "SuperJump", Config.SuperJump_Enabled, function(v) if Config.VIPUnlocked then Config.SuperJump_Enabled = v end end)
-createToggle(VipControlsFrame, "7. Fling Aura (Троллинг раскидыванием)", "FlingAura", Config.FlingAura_Enabled, function(v) if Config.VIPUnlocked then Config.FlingAura_Enabled = v end end)
-createToggle(VipControlsFrame, "8. Ragdoll Mode (Падение в рэгдолл)", "Ragdoll", Config.Ragdoll_Enabled, function(v) if Config.VIPUnlocked then Config.Ragdoll_Enabled = v end end)
-createToggle(VipControlsFrame, "9. Fake Chat Spam (Спам в чат)", "FakeChat", Config.FakeChat_Enabled, function(v) if Config.VIPUnlocked then Config.FakeChat_Enabled = v end end)
-createToggle(VipControlsFrame, "10. Invisible Arms (Невидимые руки)", "InvisArms", Config.InvisibleArms_Enabled, function(v) if Config.VIPUnlocked then Config.InvisibleArms_Enabled = v end end)
-
--- ЧЕРНЫЙ НЕПРОЗРАЧНЫЙ ОВЕРЛЕЙ БЛОКИРОВКИ ВКЛАДКИ VIP
-local PremiumLockOverlay = Instance.new("Frame")
-PremiumLockOverlay.Size = UDim2.new(1, 0, 1, 0)
-PremiumLockOverlay.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
-PremiumLockOverlay.BackgroundTransparency = 0 -- Абсолютно сплошной фоновый оверлей
-PremiumLockOverlay.ZIndex = 5
-PremiumLockOverlay.Parent = vipPage
-
-local LockCenterCard = Instance.new("Frame")
-LockCenterCard.Size = UDim2.new(0, 340, 0, 160)
-LockCenterCard.Position = UDim2.new(0.5, -170, 0.5, -80)
-LockCenterCard.BackgroundColor3 = Color3.fromRGB(24, 26, 38)
-LockCenterCard.ZIndex = 6
-LockCenterCard.Parent = PremiumLockOverlay
-
-local LockCardCorner = Instance.new("UICorner")
-LockCardCorner.CornerRadius = UDim.new(0, 12)
-LockCardCorner.Parent = LockCenterCard
-
-local LockCardStroke = Instance.new("UIStroke")
-LockCardStroke.Thickness = 2
-LockCardStroke.Color = Color3.fromRGB(255, 215, 0)
-LockCardStroke.Parent = LockCenterCard
-addGradient(LockCardStroke, Color3.fromRGB(255, 215, 0), Color3.fromRGB(200, 230, 255), 45, false)
-
-local LockIcon = Instance.new("TextLabel")
-LockIcon.Size = UDim2.new(1, 0, 0, 35)
-LockIcon.Position = UDim2.new(0, 0, 0, 12)
-LockIcon.BackgroundTransparency = 1
-LockIcon.Text = "🔒"
-LockIcon.TextSize = 26
-LockIcon.ZIndex = 7
-LockIcon.Parent = LockCenterCard
-
-local LockMsgTitle = Instance.new("TextLabel")
-LockMsgTitle.Size = UDim2.new(1, 0, 0, 25)
-LockMsgTitle.Position = UDim2.new(0, 0, 0, 48)
-LockMsgTitle.BackgroundTransparency = 1
-LockMsgTitle.Text = "Требуется Premium или Platinum!"
-LockMsgTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
-LockMsgTitle.Font = Config.Font_Main
-LockMsgTitle.TextSize = 13
-LockMsgTitle.ZIndex = 7
-LockMsgTitle.Parent = LockCenterCard
-
-local LockMsgSub = Instance.new("TextLabel")
-LockMsgSub.Size = UDim2.new(1, -20, 0, 35)
-LockMsgSub.Position = UDim2.new(0, 10, 0, 75)
-LockMsgSub.BackgroundTransparency = 1
-LockMsgSub.Text = "Вкладка VIP заблокирована. Для разблокировки всех эксклюзивных функций необходимо приобрести статус Premium или Platinum."
-LockMsgSub.TextColor3 = Color3.fromRGB(180, 185, 205)
-LockMsgSub.Font = Config.Font_Main
-LockMsgSub.TextSize = 10
-LockMsgSub.TextWrapped = true
-LockMsgSub.ZIndex = 7
-LockMsgSub.Parent = LockCenterCard
-
-local GoToSubBtn = Instance.new("TextButton")
-GoToSubBtn.Size = UDim2.new(0, 180, 0, 30)
-GoToSubBtn.Position = UDim2.new(0.5, -90, 0, 118)
-GoToSubBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-GoToSubBtn.Text = "Купить подписку"
-GoToSubBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-GoToSubBtn.Font = Config.Font_Main
-GoToSubBtn.TextSize = 11
-GoToSubBtn.ZIndex = 7
-GoToSubBtn.Parent = LockCenterCard
-local GoSubCorner = Instance.new("UICorner")
-GoSubCorner.CornerRadius = UDim.new(0, 6)
-GoSubCorner.Parent = GoToSubBtn
-addGradient(GoToSubBtn, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 120, 0), 0, false)
+createToggle(VipControlsFrame, "1. Rainbow Character (Радужный)", "RainbowChar", Config.RainbowChar_Enabled, function(v) Config.RainbowChar_Enabled = v end, true)
+createToggle(VipControlsFrame, "2. Drunk Camera (Пьяная Камера)", "DrunkCam", Config.DrunkCam_Enabled, function(v) Config.DrunkCam_Enabled = v end, true)
+createToggle(VipControlsFrame, "3. Big Head (Огромные головы игроков)", "BigHead", Config.BigHead_Enabled, function(v) Config.BigHead_Enabled = v end, true)
+createToggle(VipControlsFrame, "4. Screen Shake (Тряска экрана)", "ScreenShake", Config.ScreenShake_Enabled, function(v) Config.ScreenShake_Enabled = v end, true)
+createToggle(VipControlsFrame, "5. Auto Clicker (Автокликер мыши)", "AutoClick", Config.AutoClick_Enabled, function(v) Config.AutoClick_Enabled = v end, true)
+createToggle(VipControlsFrame, "6. Super Jump VIP (Супер-прыжок)", "SuperJump", Config.SuperJump_Enabled, function(v) Config.SuperJump_Enabled = v end, true)
+createToggle(VipControlsFrame, "7. Fling Aura (Троллинг раскидыванием)", "FlingAura", Config.FlingAura_Enabled, function(v) Config.FlingAura_Enabled = v end, true)
+createToggle(VipControlsFrame, "8. Ragdoll Mode (Падение в рэгдолл)", "Ragdoll", Config.Ragdoll_Enabled, function(v) Config.Ragdoll_Enabled = v end, true)
+createToggle(VipControlsFrame, "9. Fake Chat Spam (Спам в чат)", "FakeChat", Config.FakeChat_Enabled, function(v) Config.FakeChat_Enabled = v end, true)
+createToggle(VipControlsFrame, "10. Invisible Arms (Невидимые руки)", "InvisArms", Config.InvisibleArms_Enabled, function(v) Config.InvisibleArms_Enabled = v end, true)
 
 -- ==========================================
--- СИСТЕМА ПОДПИСОК (UI И ЛОГИКА АКТИВАЦИИ/СОХРАНЕНИЯ)
+-- СИСТЕМА ПОДПИСОК (UI И ЛОГИКА АКТИВАЦИИ/ШИФРОВАНИЯ)
 -- ==========================================
 local SubOverlay = Instance.new("Frame")
 SubOverlay.Size = UDim2.new(1, -180, 1, 0)
@@ -1670,12 +1682,6 @@ CloseSubBtn.ZIndex = 11
 CloseSubBtn.Parent = SubOverlay
 
 SubscribeBtn.MouseButton1Click:Connect(function()
-    SubOverlay.Visible = true
-    SubOverlay.Position = UDim2.new(1, 0, 0, 0)
-    TweenService:Create(SubOverlay, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.new(0, 180, 0, 0)}):Play()
-end)
-
-GoToSubBtn.MouseButton1Click:Connect(function()
     SubOverlay.Visible = true
     SubOverlay.Position = UDim2.new(1, 0, 0, 0)
     TweenService:Create(SubOverlay, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.new(0, 180, 0, 0)}):Play()
@@ -1848,40 +1854,89 @@ LinkBox.TextEditable = false
 LinkBox.ZIndex = 11
 LinkBox.Parent = SubOverlay
 
--- ФУНКЦИИ СОХРАНЕНИЯ И ЗАГРУЗКИ ПОДПИСКИ
+-- ==========================================
+-- ШИФРОВАНИЕ И СОХРАНЕНИЕ VIP СТАТУСА
+-- ==========================================
+local XOR_KEY = 0x6D
+
+local function cipherString(str)
+    local hexTable = {}
+    for i = 1, #str do
+        local byte = string.byte(str, i)
+        local enc = (bit32 and bit32.bxor(byte, XOR_KEY)) or (byte + 13) % 256
+        table.insert(hexTable, string.format("%02X", enc))
+    end
+    return "DH_ENC_" .. table.concat(hexTable)
+end
+
+local function decipherString(encStr)
+    if not string.find(encStr, "^DH_ENC_") then return nil end
+    local hexData = string.sub(encStr, 8)
+    local chars = {}
+    for i = 1, #hexData, 2 do
+        local byte = tonumber(string.sub(hexData, i, i + 1), 16)
+        if not byte then return nil end
+        local dec = (bit32 and bit32.bxor(byte, XOR_KEY)) or (byte - 13) % 256
+        table.insert(chars, string.char(dec))
+    end
+    return table.concat(chars)
+end
+
 local function saveSubscriptionData(tier)
     if writefile then
         pcall(function()
-            local data = {
+            local payload = {
+                _header = "================ DIELINS HUB ENCRYPTED LICENSE DATA ================",
+                _junk1 = "a8f9c02d1e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b",
+                _junk2 = "SystemAuthPayload_VERIFIED_DIELINIX_2026_PROTECTED_CHECKSUM_OK",
+                _junk3 = "DielinixSecretKey_987213098123098123098120391823019283019283109283",
+                _junk4 = "0000010101001010101001010101010010101010100101010101001010101010",
+                UserId = LocalPlayer.UserId,
                 VIPUnlocked = true,
                 Tier = tier,
                 RoleText = tier .. " Status",
-                RoleColor = tier == "Platinum" and {200, 230, 255} or {255, 215, 0}
+                RoleColor = tier == "Platinum" and {200, 230, 255} or {255, 215, 0},
+                _chk = (LocalPlayer.UserId * 1337 + 4242)
             }
-            writefile(SaveFilePath, HttpService:JSONEncode(data))
+            local jsonRaw = HttpService:JSONEncode(payload)
+            local encryptedData = cipherString(jsonRaw)
+            writefile(SaveFilePath, encryptedData)
         end)
     end
 end
 
 local function loadSubscriptionData()
     if isfile and readfile and isfile(SaveFilePath) then
-        local success, data = pcall(function()
-            return HttpService:JSONDecode(readfile(SaveFilePath))
-        end)
-        if success and type(data) == "table" and data.VIPUnlocked then
-            Config.VIPUnlocked = true
-            local roleText = data.RoleText or "Premium Status"
-            local colT = data.RoleColor or {255, 215, 0}
-            local roleCol = Color3.fromRGB(colT[1], colT[2], colT[3])
+        pcall(function()
+            local rawContent = readfile(SaveFilePath)
+            local decryptedStr = decipherString(rawContent)
+            
+            if not decryptedStr then return end
 
-            BadgeLabel.Text = roleText
-            BadgeLabel.TextColor3 = roleCol
-            PremiumLockOverlay.Visible = false
-        end
+            local success, data = pcall(function()
+                return HttpService:JSONDecode(decryptedStr)
+            end)
+
+            if success and type(data) == "table" and data.VIPUnlocked then
+                -- Проверка валидности контрольной суммы и привязки
+                local expectedChk = (LocalPlayer.UserId * 1337 + 4242)
+                if data.UserId == LocalPlayer.UserId and data._chk == expectedChk then
+                    Config.VIPUnlocked = true
+                    local roleText = data.RoleText or "Premium Status"
+                    local colT = data.RoleColor or {255, 215, 0}
+                    local roleCol = Color3.fromRGB(colT[1], colT[2], colT[3])
+
+                    BadgeLabel.Text = roleText
+                    BadgeLabel.TextColor3 = roleCol
+                else
+                    showNotification("Безопасность", "Файл подписки поврежден или подделан!", Color3.fromRGB(255, 80, 80))
+                end
+            end
+        end)
     end
 end
 
--- Автозагрузка подписки при запуске
+-- Автозагрузка подписки
 loadSubscriptionData()
 
 -- Логика проверки и активации подписки
@@ -1898,11 +1953,7 @@ SubApplyBtn.MouseButton1Click:Connect(function()
         BadgeLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
         
         saveSubscriptionData("Premium")
-
-        TweenService:Create(PremiumLockOverlay, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-        TweenService:Create(LockCenterCard, TweenInfo.new(0.4), {Size = UDim2.new(0, 0, 0, 0), Position = LockCenterCard.Position + UDim2.new(0, 170, 0, 80)}):Play()
-        task.wait(0.4)
-        PremiumLockOverlay.Visible = false
+        showNotification("Успех!", "Вам открыт доступ к Premium функциям!", Color3.fromRGB(255, 215, 0))
 
     elseif code == "Dielin12345" then
         playSound(127675253015979)
@@ -1915,11 +1966,7 @@ SubApplyBtn.MouseButton1Click:Connect(function()
         BadgeLabel.TextColor3 = Color3.fromRGB(200, 230, 255)
         
         saveSubscriptionData("Platinum")
-
-        TweenService:Create(PremiumLockOverlay, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-        TweenService:Create(LockCenterCard, TweenInfo.new(0.4), {Size = UDim2.new(0, 0, 0, 0), Position = LockCenterCard.Position + UDim2.new(0, 170, 0, 80)}):Play()
-        task.wait(0.4)
-        PremiumLockOverlay.Visible = false
+        showNotification("Успех!", "Вам открыт доступ к Platinum функциям!", Color3.fromRGB(200, 230, 255))
 
     else
         playSound(106796270505945)
@@ -1928,6 +1975,146 @@ SubApplyBtn.MouseButton1Click:Connect(function()
         SubStatusMsg.TextColor3 = Color3.fromRGB(255, 80, 80)
         SubStatusMsg.Visible = true
     end
+end)
+
+-- ==========================================
+-- СИСТЕМА КОНФИГУРАЦИЙ (CONFIGS TAB)
+-- ==========================================
+local SavedConfigsList = {}
+
+local function serializeColor3(c3)
+    return {R = c3.R, G = c3.G, B = c3.B}
+end
+
+local function deserializeColor3(tbl)
+    if type(tbl) == "table" and tbl.R and tbl.G and tbl.B then
+        return Color3.new(tbl.R, tbl.G, tbl.B)
+    end
+    return Color3.fromRGB(255, 255, 255)
+end
+
+local function fetchAllConfigs()
+    if isfile and readfile and isfile(ConfigsFilePath) then
+        local success, res = pcall(function()
+            return HttpService:JSONDecode(readfile(ConfigsFilePath))
+        end)
+        if success and type(res) == "table" then
+            SavedConfigsList = res
+            return
+        end
+    end
+    SavedConfigsList = {}
+end
+
+local function writeAllConfigs()
+    if writefile then
+        pcall(function()
+            writefile(ConfigsFilePath, HttpService:JSONEncode(SavedConfigsList))
+        end)
+    end
+end
+
+-- Ввод названия конфига
+local ConfigNameBox = Instance.new("TextBox")
+ConfigNameBox.Size = UDim2.new(1, -6, 0, 36)
+ConfigNameBox.BackgroundColor3 = Color3.fromRGB(22, 24, 34)
+ConfigNameBox.PlaceholderText = "Введите название конфига..."
+ConfigNameBox.Text = ""
+ConfigNameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+ConfigNameBox.Font = Config.Font_Main
+ConfigNameBox.TextSize = 12
+ConfigNameBox.Parent = configsPage
+
+local CNameCorner = Instance.new("UICorner")
+CNameCorner.CornerRadius = UDim.new(0, 8)
+CNameCorner.Parent = ConfigNameBox
+
+fetchAllConfigs()
+
+local configOptionsNames = {}
+for name, _ in pairs(SavedConfigsList) do
+    table.insert(configOptionsNames, name)
+end
+
+local selectedConfigName = configOptionsNames[1] or ""
+local ConfigSelector = createSelector(configsPage, "Выбрать конфиг", configOptionsNames, 1, function(v)
+    selectedConfigName = v
+end)
+
+local function updateConfigSelectorUI()
+    fetchAllConfigs()
+    local opts = {}
+    for name, _ in pairs(SavedConfigsList) do
+        table.insert(opts, name)
+    end
+    if ConfigSelector then
+        ConfigSelector.SetOptions(opts, 1)
+    end
+    selectedConfigName = opts[1] or ""
+end
+
+-- Кнопка сохранения конфига
+createButton(configsPage, "💾 Сохранить Конфиг", "SaveConfigBtn", function()
+    local name = ConfigNameBox.Text
+    if name == "" then
+        showNotification("Ошибка", "Введите название конфига в поле!", Color3.fromRGB(255, 80, 80))
+        return
+    end
+
+    fetchAllConfigs()
+    local configData = {}
+    for k, v in pairs(Config) do
+        if type(v) == "userdata" and typeof(v) == "Color3" then
+            configData[k] = {_isColor3 = true, val = serializeColor3(v)}
+        elseif type(v) ~= "function" and typeof(v) ~= "EnumItem" then
+            configData[k] = v
+        end
+    end
+
+    SavedConfigsList[name] = configData
+    writeAllConfigs()
+    updateConfigSelectorUI()
+    showNotification("Конфиг Сохранен", "Конфиг '" .. name .. "' успешно сохранен!", Color3.fromRGB(0, 255, 120))
+end)
+
+-- Кнопка загрузки конфига
+createButton(configsPage, "📂 Загрузить Конфиг", "LoadConfigBtn", function()
+    if selectedConfigName == "" or not SavedConfigsList[selectedConfigName] then
+        showNotification("Ошибка", "Конфиг не выбран!", Color3.fromRGB(255, 80, 80))
+        return
+    end
+
+    local loadedData = SavedConfigsList[selectedConfigName]
+    for k, v in pairs(loadedData) do
+        if type(v) == "table" and v._isColor3 then
+            Config[k] = deserializeColor3(v.val)
+        else
+            Config[k] = v
+        end
+    end
+
+    Camera.FieldOfView = Config.FOV_Value
+    updateCustomFX()
+    showNotification("Конфиг Загружен", "Конфиг '" .. selectedConfigName .. "' применен!", Color3.fromRGB(0, 220, 255))
+end)
+
+-- Кнопка удаления конфига
+createButton(configsPage, "❌ Удалить Конфиг", "DeleteConfigBtn", function()
+    if selectedConfigName == "" or not SavedConfigsList[selectedConfigName] then
+        showNotification("Ошибка", "Конфиг не найден!", Color3.fromRGB(255, 80, 80))
+        return
+    end
+
+    SavedConfigsList[selectedConfigName] = nil
+    writeAllConfigs()
+    updateConfigSelectorUI()
+    showNotification("Конфиг Удален", "Конфиг удален!", Color3.fromRGB(255, 120, 0))
+end)
+
+-- Кнопка обновления списка
+createButton(configsPage, "🔄 Обновить Список", "RefreshConfigBtn", function()
+    updateConfigSelectorUI()
+    showNotification("Список обновлен", "Список доступных конфигов обновлен.", Color3.fromRGB(150, 150, 255))
 end)
 
 -- ==========================================
