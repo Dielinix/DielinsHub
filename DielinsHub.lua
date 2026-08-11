@@ -1,67 +1,3 @@
--- ==========================================
--- ПРОВЕРКА ВЕРСИИ И БЛОКИРОВКА ПРИ УСТАРЕНИИ
--- ==========================================
-local CURRENT_VERSION = "1.0.0" 
-local VERSION_URL = "https://raw.githubusercontent.com/Dielinix/DielinsHub/refs/heads/main/version.txt"
-
-local function checkVersion()
-    local success, response = pcall(function()
-        return game:HttpGet(VERSION_URL)
-    end)
-
-    if not success then
-        warn("[DielinsHub]: Не удалось проверить наличие обновлений.")
-        return true 
-    end
-
-    local latestVersion = response:gsub("%s+", "")
-
-    if latestVersion ~= CURRENT_VERSION then
-        return false
-    end
-    
-    return true
-end
-
-if not checkVersion() then
-    local Players = game:GetService("Players")
-    local player = Players.LocalPlayer
-    local playerGui = player:FindFirstChildOfClass("PlayerGui") or player:WaitForChild("PlayerGui")
-
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "UpdateRequiredGui"
-    ScreenGui.IgnoreGuiInset = true
-    ScreenGui.ResetOnSpawn = false
-
-    local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, 0, 1, 0)
-    Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    Frame.BorderSizePixel = 0
-    Frame.Parent = ScreenGui
-
-    local TextLabel = Instance.new("TextLabel")
-    TextLabel.Size = UDim2.new(0, 650, 0, 250)
-    TextLabel.Position = UDim2.new(0.5, -325, 0.5, -125)
-    TextLabel.BackgroundTransparency = 1
-    TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TextLabel.TextScaled = true
-    TextLabel.Font = Enum.Font.GothamBold
-    TextLabel.Text = "⚠️ SCRIPT OUTDATED ⚠️\nThis version is no longer working. Please update!\nTelegram: t.me/dielinix\n\n⚠️ СКРИПТ УСТАРЕЛ ⚠️\nЭта версия больше не работает. Требуется обновление!\nСкачать новую версию: t.me/dielinix"
-    TextLabel.Parent = Frame
-
-    ScreenGui.Parent = playerGui
-
-    task.defer(function()
-        while true do
-            task.wait(9e9)
-        end
-    end)
-    return
-end
-
--- ==========================================
--- ОСНОВНОЙ КОД ХУБА
--- ==========================================
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -348,7 +284,7 @@ CreditLabel2.TextSize = 9
 CreditLabel2.Parent = Sidebar
 
 local ProfileFrame = Instance.new("Frame")
-ProfileFrame.Size = UDim2.new(1, -16, 0, 42)
+ProfileFrame.Size = UDim2.new(1, -16, 0, 64) -- Немного увеличено, чтобы вместить кнопку подписки
 ProfileFrame.Position = UDim2.new(0, 8, 0, 64)
 ProfileFrame.BackgroundColor3 = Color3.fromRGB(28, 30, 42)
 ProfileFrame.Parent = Sidebar
@@ -359,7 +295,7 @@ ProfileCorner.Parent = ProfileFrame
 
 local AvatarImage = Instance.new("ImageLabel")
 AvatarImage.Size = UDim2.new(0, 30, 0, 30)
-AvatarImage.Position = UDim2.new(0, 6, 0.5, -15)
+AvatarImage.Position = UDim2.new(0, 6, 0, 6)
 AvatarImage.BackgroundTransparency = 1
 AvatarImage.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 AvatarImage.Parent = ProfileFrame
@@ -386,9 +322,22 @@ BadgeLabel.TextSize = 9
 BadgeLabel.TextXAlignment = Enum.TextXAlignment.Left
 BadgeLabel.Parent = ProfileFrame
 
+local SubscribeBtn = Instance.new("TextButton")
+SubscribeBtn.Size = UDim2.new(1, -44, 0, 16)
+SubscribeBtn.Position = UDim2.new(0, 40, 0, 40)
+SubscribeBtn.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+SubscribeBtn.Text = "Subscribe"
+SubscribeBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+SubscribeBtn.Font = Config.Font_Main
+SubscribeBtn.TextSize = 10
+SubscribeBtn.Parent = ProfileFrame
+local SubBtnCorner = Instance.new("UICorner")
+SubBtnCorner.CornerRadius = UDim.new(0, 4)
+SubBtnCorner.Parent = SubscribeBtn
+
 local TabContainer = Instance.new("Frame")
-TabContainer.Size = UDim2.new(1, -16, 1, -120)
-TabContainer.Position = UDim2.new(0, 8, 0, 112)
+TabContainer.Size = UDim2.new(1, -16, 1, -140)
+TabContainer.Position = UDim2.new(0, 8, 0, 134)
 TabContainer.BackgroundTransparency = 1
 TabContainer.Parent = Sidebar
 
@@ -1565,6 +1514,226 @@ SubmitBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- ==========================================
+-- СИСТЕМА ПОДПИСОК (НОВОЕ UI И ЛОГИКА)
+-- ==========================================
+local SubOverlay = Instance.new("Frame")
+SubOverlay.Size = UDim2.new(1, -180, 1, 0)
+SubOverlay.Position = UDim2.new(0, 180, 0, 0)
+SubOverlay.BackgroundColor3 = Color3.fromRGB(14, 15, 20)
+SubOverlay.ZIndex = 10
+SubOverlay.Visible = false
+SubOverlay.Parent = MainFrame
+
+local CloseSubBtn = Instance.new("TextButton")
+CloseSubBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseSubBtn.Position = UDim2.new(1, -35, 0, 5)
+CloseSubBtn.BackgroundTransparency = 1
+CloseSubBtn.Text = "X"
+CloseSubBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+CloseSubBtn.Font = Enum.Font.GothamBold
+CloseSubBtn.TextSize = 18
+CloseSubBtn.ZIndex = 11
+CloseSubBtn.Parent = SubOverlay
+
+SubscribeBtn.MouseButton1Click:Connect(function()
+    SubOverlay.Visible = true
+end)
+
+CloseSubBtn.MouseButton1Click:Connect(function()
+    SubOverlay.Visible = false
+end)
+
+-- Карточка Premium
+local PremCard = Instance.new("Frame")
+PremCard.Size = UDim2.new(0, 220, 0, 80)
+PremCard.Position = UDim2.new(0, 15, 0, 15)
+PremCard.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+PremCard.ZIndex = 10
+PremCard.Parent = SubOverlay
+local PremCorner = Instance.new("UICorner")
+PremCorner.CornerRadius = UDim.new(0, 8)
+PremCorner.Parent = PremCard
+addGradient(PremCard, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 140, 0), 45)
+
+local PremTitle = Instance.new("TextLabel")
+PremTitle.Size = UDim2.new(1, 0, 0, 20)
+PremTitle.Position = UDim2.new(0, 0, 0, 10)
+PremTitle.BackgroundTransparency = 1
+PremTitle.Text = "Premium Status"
+PremTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+PremTitle.Font = Config.Font_Main
+PremTitle.TextSize = 16
+PremTitle.ZIndex = 11
+PremTitle.Parent = PremCard
+
+local PremPriceRUB = Instance.new("TextLabel")
+PremPriceRUB.Size = UDim2.new(1, 0, 0, 15)
+PremPriceRUB.Position = UDim2.new(0, 0, 0, 35)
+PremPriceRUB.BackgroundTransparency = 1
+PremPriceRUB.Text = "30 Рублей"
+PremPriceRUB.TextColor3 = Color3.fromRGB(255, 255, 255)
+PremPriceRUB.Font = Config.Font_Main
+PremPriceRUB.TextSize = 14
+PremPriceRUB.ZIndex = 11
+PremPriceRUB.Parent = PremCard
+
+local PremPriceUSD = Instance.new("TextLabel")
+PremPriceUSD.Size = UDim2.new(1, 0, 0, 15)
+PremPriceUSD.Position = UDim2.new(0, 0, 0, 55)
+PremPriceUSD.BackgroundTransparency = 1
+PremPriceUSD.Text = "~ 0.33 USD"
+PremPriceUSD.TextColor3 = Color3.fromRGB(240, 240, 240)
+PremPriceUSD.Font = Config.Font_Main
+PremPriceUSD.TextSize = 12
+PremPriceUSD.ZIndex = 11
+PremPriceUSD.Parent = PremCard
+
+-- Карточка Platinum
+local PlatCard = Instance.new("Frame")
+PlatCard.Size = UDim2.new(0, 220, 0, 80)
+PlatCard.Position = UDim2.new(0, 245, 0, 15)
+PlatCard.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+PlatCard.ZIndex = 10
+PlatCard.Parent = SubOverlay
+local PlatCorner = Instance.new("UICorner")
+PlatCorner.CornerRadius = UDim.new(0, 8)
+PlatCorner.Parent = PlatCard
+addGradient(PlatCard, Color3.fromRGB(200, 230, 255), Color3.fromRGB(255, 180, 255), 45)
+
+local PlatTitle = Instance.new("TextLabel")
+PlatTitle.Size = UDim2.new(1, 0, 0, 20)
+PlatTitle.Position = UDim2.new(0, 0, 0, 10)
+PlatTitle.BackgroundTransparency = 1
+PlatTitle.Text = "Platinum Status"
+PlatTitle.TextColor3 = Color3.fromRGB(50, 50, 100)
+PlatTitle.Font = Config.Font_Main
+PlatTitle.TextSize = 16
+PlatTitle.ZIndex = 11
+PlatTitle.Parent = PlatCard
+
+local PlatPriceRUB = Instance.new("TextLabel")
+PlatPriceRUB.Size = UDim2.new(1, 0, 0, 15)
+PlatPriceRUB.Position = UDim2.new(0, 0, 0, 35)
+PlatPriceRUB.BackgroundTransparency = 1
+PlatPriceRUB.Text = "69 Руб. (Скидка! Без: 119 Руб.)"
+PlatPriceRUB.TextColor3 = Color3.fromRGB(50, 50, 100)
+PlatPriceRUB.Font = Config.Font_Main
+PlatPriceRUB.TextSize = 12
+PlatPriceRUB.ZIndex = 11
+PlatPriceRUB.Parent = PlatCard
+
+local PlatPriceUSD = Instance.new("TextLabel")
+PlatPriceUSD.Size = UDim2.new(1, 0, 0, 15)
+PlatPriceUSD.Position = UDim2.new(0, 0, 0, 55)
+PlatPriceUSD.BackgroundTransparency = 1
+PlatPriceUSD.Text = "~ 0.76 USD (Без: 1.32 USD)"
+PlatPriceUSD.TextColor3 = Color3.fromRGB(80, 80, 130)
+PlatPriceUSD.Font = Config.Font_Main
+PlatPriceUSD.TextSize = 11
+PlatPriceUSD.ZIndex = 11
+PlatPriceUSD.Parent = PlatCard
+
+-- Поле и кнопка активации
+local ActTitle = Instance.new("TextLabel")
+ActTitle.Size = UDim2.new(1, 0, 0, 20)
+ActTitle.Position = UDim2.new(0, 0, 0, 130)
+ActTitle.BackgroundTransparency = 1
+ActTitle.Text = "Активировать подписку"
+ActTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ActTitle.Font = Config.Font_Main
+ActTitle.TextSize = 16
+ActTitle.ZIndex = 11
+ActTitle.Parent = SubOverlay
+
+local SubPromoBox = Instance.new("TextBox")
+SubPromoBox.Size = UDim2.new(0, 250, 0, 35)
+SubPromoBox.Position = UDim2.new(0.5, -125, 0, 160)
+SubPromoBox.BackgroundColor3 = Color3.fromRGB(30, 33, 48)
+SubPromoBox.PlaceholderText = "Введите промокод..."
+SubPromoBox.Text = ""
+SubPromoBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SubPromoBox.Font = Config.Font_Main
+SubPromoBox.TextSize = 14
+SubPromoBox.ZIndex = 11
+SubPromoBox.Parent = SubOverlay
+local SubBoxCorner = Instance.new("UICorner")
+SubBoxCorner.CornerRadius = UDim.new(0, 6)
+SubBoxCorner.Parent = SubPromoBox
+
+local SubApplyBtn = Instance.new("TextButton")
+SubApplyBtn.Size = UDim2.new(0, 150, 0, 35)
+SubApplyBtn.Position = UDim2.new(0.5, -75, 0, 205)
+SubApplyBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+SubApplyBtn.Text = "Активировать"
+SubApplyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SubApplyBtn.Font = Config.Font_Main
+SubApplyBtn.TextSize = 14
+SubApplyBtn.ZIndex = 11
+SubApplyBtn.Parent = SubOverlay
+local SubApplyCorner = Instance.new("UICorner")
+SubApplyCorner.CornerRadius = UDim.new(0, 6)
+SubApplyCorner.Parent = SubApplyBtn
+addGradient(SubApplyBtn, Config.Theme_Color1, Config.Theme_Color2, 0)
+
+local SubStatusMsg = Instance.new("TextLabel")
+SubStatusMsg.Size = UDim2.new(1, -40, 0, 40)
+SubStatusMsg.Position = UDim2.new(0, 20, 0, 250)
+SubStatusMsg.BackgroundTransparency = 1
+SubStatusMsg.Text = ""
+SubStatusMsg.TextColor3 = Color3.fromRGB(0, 255, 100)
+SubStatusMsg.Font = Config.Font_Main
+SubStatusMsg.TextSize = 12
+SubStatusMsg.TextWrapped = true
+SubStatusMsg.Visible = false
+SubStatusMsg.ZIndex = 11
+SubStatusMsg.Parent = SubOverlay
+
+-- Ссылка для покупки
+local LinkBox = Instance.new("TextBox")
+LinkBox.Size = UDim2.new(1, -40, 0, 30)
+LinkBox.Position = UDim2.new(0, 20, 1, -50)
+LinkBox.BackgroundTransparency = 1
+LinkBox.Text = "Купить подписку - https://funpay.com/users/8853022/"
+LinkBox.TextColor3 = Color3.fromRGB(150, 155, 175)
+LinkBox.Font = Config.Font_Main
+LinkBox.TextSize = 12
+LinkBox.ClearTextOnFocus = false
+LinkBox.TextEditable = false
+LinkBox.ZIndex = 11
+LinkBox.Parent = SubOverlay
+
+-- Логика проверки промокода
+SubApplyBtn.MouseButton1Click:Connect(function()
+    local code = SubPromoBox.Text
+    if code == "Dielin123" then
+        SubStatusMsg.Text = 'Поздравляем с покупкой "Premium Status" вам теперь доступны новые функции.'
+        SubStatusMsg.TextColor3 = Color3.fromRGB(255, 215, 0)
+        SubStatusMsg.Visible = true
+        Config.VIPUnlocked = true
+        BadgeLabel.Text = "Premium Status"
+        BadgeLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+        if PromoLockFrame then PromoLockFrame.Visible = false end
+        if VipControlsFrame then VipControlsFrame.Visible = true end
+    elseif code == "Dielin12345" then
+        SubStatusMsg.Text = 'Поздравляем с покупкой "Platinum Status" вам теперь доступны новые функции.'
+        SubStatusMsg.TextColor3 = Color3.fromRGB(200, 230, 255)
+        SubStatusMsg.Visible = true
+        Config.VIPUnlocked = true
+        BadgeLabel.Text = "Platinum Status"
+        BadgeLabel.TextColor3 = Color3.fromRGB(200, 230, 255)
+        if PromoLockFrame then PromoLockFrame.Visible = false end
+        if VipControlsFrame then VipControlsFrame.Visible = true end
+    else
+        SubStatusMsg.Text = "Неверный промокод!"
+        SubStatusMsg.TextColor3 = Color3.fromRGB(255, 80, 80)
+        SubStatusMsg.Visible = true
+    end
+end)
+
+-- ==========================================
+-- ИГРОВЫЕ ЦИКЛЫ ДЛЯ ТРОЛЛИНГА
+-- ==========================================
 RunService.RenderStepped:Connect(function()
     if Config.RainbowChar_Enabled and LocalPlayer.Character then
         local hue = tick() % 5 / 5
