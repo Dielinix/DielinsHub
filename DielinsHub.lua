@@ -6,9 +6,30 @@ local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local CoreGui = game:GetService("CoreGui")
 local Stats = game:GetService("Stats")
+local SoundService = game:GetService("SoundService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
+
+-- Таблица для очистки всех соединений при завершении
+local Connections = {}
+
+-- Функция воспроизведения звука
+local function playSound(soundId)
+    task.spawn(function()
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. tostring(soundId)
+        sound.Volume = 0.5
+        sound.Parent = SoundService
+        sound:Play()
+        sound.Ended:Connect(function()
+            sound:Destroy()
+        end)
+        task.delay(3, function()
+            if sound and sound.Parent then sound:Destroy() end
+        end)
+    end)
+end
 
 -- ==========================================
 -- КОНФИГУРАЦИЯ И СОСТОЯНИЯ
@@ -76,7 +97,7 @@ local Config = {
     OriginalAmbient = Lighting.Ambient,
     OriginalOutdoorAmbient = Lighting.OutdoorAmbient,
 
-    -- VIP Status System (Без старого промокода FreeDielin)
+    -- VIP / Premium Status
     VIPUnlocked = false,
 
     -- Extra & VIP Troll Functions
@@ -165,7 +186,7 @@ local function addGradient(parent, color1, color2, angle, isThemed)
     return grad
 end
 
--- Кнопка открытия/закрытия главного меню с микро-анимацией прыжка
+-- Кнопка открытия/закрытия главного меню
 local ToggleButton = Instance.new("ImageButton")
 ToggleButton.Name = "ToggleButton"
 ToggleButton.Size = UDim2.new(0, 50, 0, 50)
@@ -218,7 +239,7 @@ local frameCount = 0
 local lastFpsUpdate = tick()
 local currentFPS = 60
 
-RunService.RenderStepped:Connect(function(dt)
+table.insert(Connections, RunService.RenderStepped:Connect(function(dt)
     frameCount += 1
     if tick() - lastFpsUpdate >= 1 then
         currentFPS = frameCount
@@ -234,21 +255,20 @@ RunService.RenderStepped:Connect(function(dt)
         StatsFrame.Text = "FPS: " .. currentFPS .. " | Ping: " .. pingVal .. "ms"
     end
     StatsFrame.Visible = Config.ShowStats
-end)
+end))
 
+-- ТЕМНЫЙ ФОН GUI ДЛЯ УСТРАНЕНИЯ СЛИШКОМ ЯРКОГО СВЕЧЕНИЯ
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 670, 0, 480)
 MainFrame.Position = UDim2.new(0.5, -335, 0.5, -240)
-MainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-MainFrame.BackgroundTransparency = 0.15
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 28) -- Исправлено: темно-серый вместо ярко-белого
+MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
-
-addGradient(MainFrame, Config.Theme_Color1, Config.Theme_Color2, 135, true)
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 16)
@@ -262,8 +282,7 @@ local globalMainGrad = addGradient(MainStroke, Config.Theme_Color1, Config.Theme
 
 local Sidebar = Instance.new("Frame")
 Sidebar.Size = UDim2.new(0, 180, 1, 0)
-Sidebar.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
-Sidebar.BackgroundTransparency = 0.3
+Sidebar.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
 Sidebar.BorderSizePixel = 0
 Sidebar.Parent = MainFrame
 
@@ -304,7 +323,7 @@ CreditLabel2.Parent = Sidebar
 local ProfileFrame = Instance.new("Frame")
 ProfileFrame.Size = UDim2.new(1, -16, 0, 64) 
 ProfileFrame.Position = UDim2.new(0, 8, 0, 64)
-ProfileFrame.BackgroundColor3 = Color3.fromRGB(28, 30, 42)
+ProfileFrame.BackgroundColor3 = Color3.fromRGB(24, 26, 36)
 ProfileFrame.Parent = Sidebar
 
 local ProfileCorner = Instance.new("UICorner")
@@ -315,7 +334,9 @@ local AvatarImage = Instance.new("ImageLabel")
 AvatarImage.Size = UDim2.new(0, 30, 0, 30)
 AvatarImage.Position = UDim2.new(0, 6, 0, 6)
 AvatarImage.BackgroundTransparency = 1
-AvatarImage.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+pcall(function()
+    AvatarImage.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+end)
 AvatarImage.Parent = ProfileFrame
 
 local UsernameLabel = Instance.new("TextLabel")
@@ -353,7 +374,7 @@ local SubBtnCorner = Instance.new("UICorner")
 SubBtnCorner.CornerRadius = UDim.new(0, 4)
 SubBtnCorner.Parent = SubscribeBtn
 
--- Кнопка полного закрытия/выключения скрипта в сайдбаре
+-- Кнопка полного закрытия/выключения скрипта
 local FullCloseBtn = Instance.new("TextButton")
 FullCloseBtn.Size = UDim2.new(1, -16, 0, 24)
 FullCloseBtn.Position = UDim2.new(0, 8, 1, -32)
@@ -366,14 +387,6 @@ FullCloseBtn.Parent = Sidebar
 local FullCloseCorner = Instance.new("UICorner")
 FullCloseCorner.CornerRadius = UDim.new(0, 6)
 FullCloseCorner.Parent = FullCloseBtn
-
-FullCloseBtn.MouseButton1Click:Connect(function()
-    -- Красивая анимация исчезновения перед полным удалением
-    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-    TweenService:Create(MainFrame, tweenInfo, {Size = UDim2.new(0, 0, 0, 0), Position = MainFrame.Position + UDim2.new(0, 335, 0, 240)}):Play()
-    task.wait(0.3)
-    ScreenGui:Destroy()
-end)
 
 local TabContainer = Instance.new("Frame")
 TabContainer.Size = UDim2.new(1, -16, 1, -170)
@@ -393,7 +406,7 @@ PagesContainer.BackgroundTransparency = 1
 PagesContainer.Parent = MainFrame
 
 -- ==========================================
--- СИСТЕМА ВКЛАДОК С СВАЙП-АНИМАЦИЯМИ
+-- СИСТЕМА ВКЛАДОК
 -- ==========================================
 local tabs = {}
 local pages = {}
@@ -402,7 +415,7 @@ local function createPage(name)
     local Page = Instance.new("ScrollingFrame")
     Page.Name = name .. "Page"
     Page.Size = UDim2.new(1, 0, 1, 0)
-    Page.Position = UDim2.new(1, 50, 0, 0) -- Начальная позиция для свайп-анимации появления
+    Page.Position = UDim2.new(1, 50, 0, 0)
     Page.BackgroundTransparency = 1
     Page.ScrollBarThickness = 3
     Page.ScrollBarImageColor3 = Config.Theme_Color1
@@ -447,6 +460,9 @@ local function createTabButton(name, order)
     tabs[name] = TabBtn
 
     TabBtn.MouseButton1Click:Connect(function()
+        -- Звук переключения вкладки 123796710194563
+        playSound(123796710194563)
+
         for tabName, btn in pairs(tabs) do
             btn.BackgroundColor3 = Color3.fromRGB(26, 28, 38)
             btn.TextColor3 = Color3.fromRGB(150, 155, 175)
@@ -461,7 +477,6 @@ local function createTabButton(name, order)
         TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         Gradient.Enabled = true
         
-        -- Плавная анимация свайпа/появления вкладки
         local activePage = pages[name]
         activePage.Visible = true
         activePage.Position = UDim2.new(0.08, 0, 0, 0)
@@ -472,7 +487,6 @@ local function createTabButton(name, order)
             BackgroundTransparency = 1
         }):Play()
 
-        -- Микро-анимация нажатия на кнопку вкладки (скэлинг)
         TweenService:Create(TabBtn, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -6, 0, 26)}):Play()
         task.delay(0.1, function()
             TweenService:Create(TabBtn, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 28)}):Play()
@@ -507,7 +521,7 @@ pages["Combat"].Visible = true
 pages["Combat"].Position = UDim2.new(0, 0, 0, 0)
 
 -- ==========================================
--- КОМПОНЕНТЫ ИНТЕРФЕЙСА С НОВЫМИ АНИМАЦИЯМИ
+-- КОМПОНЕНТЫ ИНТЕРФЕЙСА
 -- ==========================================
 local function createToggle(parent, text, featureId, initialValue, callback)
     local Frame = Instance.new("Frame")
@@ -586,6 +600,9 @@ local function createToggle(parent, text, featureId, initialValue, callback)
 
     local function setToggleState(newState)
         state = newState
+        -- Звук переключения любой функции 8968249849
+        playSound(8968249849)
+
         local targetPos = state and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
         ToggleGrad.Enabled = state
         if not state then 
@@ -638,7 +655,7 @@ local function createSlider(parent, text, min, max, default, callback)
     Label.Parent = Frame
 
     local ValueLabel = Instance.new("TextLabel")
-    ValueLabel.Size = UDim2.new(0.3, 0, 0, 18)
+    ValueLabel.Size = UDim2.new(0, 30, 0, 18)
     ValueLabel.Position = UDim2.new(0.7, -10, 0, 4)
     ValueLabel.BackgroundTransparency = 1
     ValueLabel.Text = tostring(default)
@@ -677,13 +694,13 @@ local function createSlider(parent, text, min, max, default, callback)
         end
     end)
 
-    UserInputService.InputEnded:Connect(function(input)
+    table.insert(Connections, UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-    end)
+    end))
 
-    UserInputService.InputChanged:Connect(function(input)
+    table.insert(Connections, UserInputService.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then updateInput(input) end
-    end)
+    end))
 end
 
 local function createSelector(parent, text, options, defaultIndex, callback)
@@ -782,7 +799,6 @@ local function createButton(parent, text, featureId, callback)
     addGradient(ActionBtn, Config.Theme_Color1, Config.Theme_Color2, 0, true)
 
     ActionBtn.MouseButton1Click:Connect(function()
-        -- Анимация сжатия при клике на обычные кнопки
         TweenService:Create(ActionBtn, TweenInfo.new(0.1), {Size = UDim2.new(1, -129, 1, -14)}):Play()
         task.delay(0.1, function()
             TweenService:Create(ActionBtn, TweenInfo.new(0.1), {Size = UDim2.new(1, -125, 1, -12)}):Play()
@@ -836,7 +852,7 @@ local function createButton(parent, text, featureId, callback)
 end
 
 -- Обработчик Нажатий Бинд-Клавиш
-UserInputService.InputBegan:Connect(function(input, gpe)
+table.insert(Connections, UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
 
     if ListeningFeature and input.UserInputType == Enum.UserInputType.Keyboard then
@@ -860,7 +876,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
             end
         end
     end
-end)
+end))
 
 -- ==========================================
 -- AIMBOT ЛОГИКА
@@ -893,7 +909,7 @@ local function getClosestPlayerToCursor()
     return closestPlayer
 end
 
-RunService.RenderStepped:Connect(function()
+table.insert(Connections, RunService.RenderStepped:Connect(function()
     if Config.Aimbot_Enabled then
         local target = getClosestPlayerToCursor()
         if target and target.Character then
@@ -903,7 +919,7 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
-end)
+end))
 
 -- ==========================================
 -- INK GAME: RGB ПОДСВЕТКА КРАСНЫХ ШАРОВ
@@ -930,7 +946,7 @@ local function IsRedSphere(obj)
 end
 
 task.spawn(function()
-    while true do
+    while ScreenGui and ScreenGui.Parent do
         task.wait(0.2)
         if Config.RGBHighlight_Enabled then
             local rgbColor = Color3.fromHSV((tick() * 0.4) % 1, 1, 1)
@@ -973,7 +989,7 @@ local ClickCooldown = false
 local TrackedSizes = {}
 
 task.spawn(function()
-    while true do
+    while ScreenGui and ScreenGui.Parent do
         task.wait(0.01)
 
         if Config.AutoTiming_Enabled and not ClickCooldown then
@@ -1103,18 +1119,18 @@ local function updateCustomFX()
     end
 end
 
-LocalPlayer.CharacterAdded:Connect(function(char)
+table.insert(Connections, LocalPlayer.CharacterAdded:Connect(function(char)
     char:WaitForChild("HumanoidRootPart", 5)
     task.wait(0.5)
     updateCustomFX()
-end)
+end))
 
 -- ==========================================
 -- BUNNYHOP
 -- ==========================================
 local currentBhopSpeed = Config.Bhop_StartSpeed
 
-RunService.Heartbeat:Connect(function()
+table.insert(Connections, RunService.Heartbeat:Connect(function()
     if Config.Bhop_Enabled and LocalPlayer.Character then
         local char = LocalPlayer.Character
         local hum = char:FindFirstChildOfClass("Humanoid")
@@ -1138,12 +1154,13 @@ RunService.Heartbeat:Connect(function()
             end
         end
     end
-end)
+end))
 
 -- ==========================================
--- ESP & TRACERS
+-- ESP & TRACERS (ОПТИМИЗИРОВАНО ДЛЯ SOLARA)
 -- ==========================================
 local DrawingCache = {}
+local DrawingAvailable = pcall(function() return Drawing and Drawing.new end) and Drawing ~= nil
 
 local function removeTracer(userId)
     if DrawingCache[userId] then
@@ -1152,11 +1169,11 @@ local function removeTracer(userId)
     end
 end
 
-Players.PlayerRemoving:Connect(function(player)
+table.insert(Connections, Players.PlayerRemoving:Connect(function(player)
     removeTracer(player.UserId)
-end)
+end))
 
-RunService.RenderStepped:Connect(function()
+table.insert(Connections, RunService.RenderStepped:Connect(function()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -1165,66 +1182,98 @@ RunService.RenderStepped:Connect(function()
                 local head = char:FindFirstChild("Head")
                 local hum = char:FindFirstChildOfClass("Humanoid")
 
-                local hl = char:FindFirstChild("DielinHL") or Instance.new("Highlight")
-                hl.Name = "DielinHL"
-                hl.FillColor = Config.ESP_Color
-                hl.FillTransparency = Config.ESP_FillTransparency
-                hl.Enabled = Config.ESP_Enabled
-                hl.Parent = char
+                -- Chams Highlight ESP
+                if Config.ESP_Enabled then
+                    local hl = char:FindFirstChild("DielinHL")
+                    if not hl then
+                        pcall(function()
+                            hl = Instance.new("Highlight")
+                            hl.Name = "DielinHL"
+                            hl.Parent = char
+                        end)
+                    end
+                    if hl then
+                        hl.FillColor = Config.ESP_Color
+                        hl.FillTransparency = Config.ESP_FillTransparency
+                        hl.OutlineColor = Config.ESP_Color
+                        hl.Enabled = true
+                    end
+                else
+                    local hl = char:FindFirstChild("DielinHL")
+                    if hl then hl:Destroy() end
+                end
 
-                if head then
-                    local tag = head:FindFirstChild("DielinTag") or Instance.new("BillboardGui")
-                    tag.Name = "DielinTag"
-                    tag.Adornee = head
-                    tag.Size = UDim2.new(0, 140, 0, 30)
-                    tag.StudsOffset = Vector3.new(0, 2.5, 0)
-                    tag.AlwaysOnTop = true
-                    tag.Enabled = Config.NameTags_Enabled
-                    tag.Parent = head
+                -- NameTags
+                if head and Config.NameTags_Enabled then
+                    local tag = head:FindFirstChild("DielinTag")
+                    if not tag then
+                        tag = Instance.new("BillboardGui")
+                        tag.Name = "DielinTag"
+                        tag.Adornee = head
+                        tag.Size = UDim2.new(0, 140, 0, 30)
+                        tag.StudsOffset = Vector3.new(0, 2.5, 0)
+                        tag.AlwaysOnTop = true
+                        tag.Parent = head
 
-                    local lbl = tag:FindFirstChild("Label") or Instance.new("TextLabel")
-                    lbl.Name = "Label"
-                    lbl.Size = UDim2.new(1, 0, 1, 0)
-                    lbl.BackgroundTransparency = 1
-                    lbl.TextColor3 = Config.NameTags_Color
-                    lbl.TextStrokeTransparency = 0
-                    lbl.Font = Config.Font_Main
-                    lbl.TextSize = 11
-                    lbl.Parent = tag
+                        local lbl = Instance.new("TextLabel")
+                        lbl.Name = "Label"
+                        lbl.Size = UDim2.new(1, 0, 1, 0)
+                        lbl.BackgroundTransparency = 1
+                        lbl.TextColor3 = Config.NameTags_Color
+                        lbl.TextStrokeTransparency = 0
+                        lbl.Font = Config.Font_Main
+                        lbl.TextSize = 11
+                        lbl.Parent = tag
+                    end
+                    tag.Enabled = true
 
-                    if hum and hrp and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude)
-                        local textStr = player.DisplayName
-                        if Config.NameTags_ShowHealth then textStr = textStr .. " [" .. math.floor(hum.Health) .. "HP]" end
-                        if Config.NameTags_ShowDistance then textStr = textStr .. " (" .. dist .. "m)" end
-                        lbl.Text = textStr
+                    local lbl = tag:FindFirstChild("Label")
+                    if lbl then
+                        lbl.TextColor3 = Config.NameTags_Color
+                        if hum and hrp and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                            local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude)
+                            local textStr = player.DisplayName
+                            if Config.NameTags_ShowHealth then textStr = textStr .. " [" .. math.floor(hum.Health) .. "HP]" end
+                            if Config.NameTags_ShowDistance then textStr = textStr .. " (" .. dist .. "m)" end
+                            lbl.Text = textStr
+                        end
+                    end
+                else
+                    if head then
+                        local tag = head:FindFirstChild("DielinTag")
+                        if tag then tag:Destroy() end
                     end
                 end
 
-                if Config.ESP_Tracers then
+                -- Tracers
+                if Config.ESP_Tracers and DrawingAvailable then
                     if not DrawingCache[player.UserId] then
-                        local line = Drawing.new("Line")
-                        line.Thickness = Config.Tracer_Thickness
-                        line.Color = Config.ESP_Color
-                        line.Transparency = 1
-                        line.Visible = false
-                        DrawingCache[player.UserId] = line
+                        pcall(function()
+                            local line = Drawing.new("Line")
+                            line.Thickness = Config.Tracer_Thickness
+                            line.Color = Config.ESP_Color
+                            line.Transparency = 1
+                            line.Visible = false
+                            DrawingCache[player.UserId] = line
+                        end)
                     end
 
                     local tracer = DrawingCache[player.UserId]
-                    local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-                    if onScreen then
-                        local startY = Camera.ViewportSize.Y
-                        if Config.Tracer_Origin == "Center" then startY = Camera.ViewportSize.Y / 2
-                        elseif Config.Tracer_Origin == "Top" then startY = 0 end
+                    if tracer then
+                        local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+                        if onScreen then
+                            local startY = Camera.ViewportSize.Y
+                            if Config.Tracer_Origin == "Center" then startY = Camera.ViewportSize.Y / 2
+                            elseif Config.Tracer_Origin == "Top" then startY = 0 end
 
-                        tracer.From = Vector2.new(Camera.ViewportSize.X / 2, startY)
-                        tracer.To = Vector2.new(pos.X, pos.Y)
-                        tracer.Color = Config.ESP_Color
-                        tracer.Thickness = Config.Tracer_Thickness
-                        tracer.Visible = true
-                    else
-                        tracer.Visible = false
+                            tracer.From = Vector2.new(Camera.ViewportSize.X / 2, startY)
+                            tracer.To = Vector2.new(pos.X, pos.Y)
+                            tracer.Color = Config.ESP_Color
+                            tracer.Thickness = Config.Tracer_Thickness
+                            tracer.Visible = true
+                        else
+                            tracer.Visible = false
+                        end
                     end
                 else
                     removeTracer(player.UserId)
@@ -1234,14 +1283,14 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
-end)
+end))
 
 -- ==========================================
 -- FLY
 -- ==========================================
 local flyBodyVel, flyBodyGyro
 
-RunService.RenderStepped:Connect(function()
+table.insert(Connections, RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if Config.Fly_Enabled and char and char:FindFirstChild("HumanoidRootPart") then
         local hrp = char.HumanoidRootPart
@@ -1274,27 +1323,27 @@ RunService.RenderStepped:Connect(function()
         if flyBodyVel then flyBodyVel:Destroy() flyBodyVel = nil end
         if flyBodyGyro then flyBodyGyro:Destroy() flyBodyGyro = nil end
     end
-end)
+end))
 
 -- ==========================================
 -- SHIFT SPRINT
 -- ==========================================
 local isShiftPressed = false
 
-UserInputService.InputBegan:Connect(function(input, gpe)
+table.insert(Connections, UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
         isShiftPressed = true
     end
-end)
+end))
 
-UserInputService.InputEnded:Connect(function(input)
+table.insert(Connections, UserInputService.InputEnded:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
         isShiftPressed = false
     end
-end)
+end))
 
-RunService.RenderStepped:Connect(function()
+table.insert(Connections, RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if char and char:FindFirstChildOfClass("Humanoid") then
         local hum = char:FindFirstChildOfClass("Humanoid")
@@ -1305,12 +1354,12 @@ RunService.RenderStepped:Connect(function()
         end
         hum.JumpPower = Config.JumpPower
     end
-end)
+end))
 
 -- ==========================================
 -- ХИТБОКСЫ
 -- ==========================================
-RunService.RenderStepped:Connect(function()
+table.insert(Connections, RunService.RenderStepped:Connect(function()
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
             local hrp = p.Character.HumanoidRootPart
@@ -1326,7 +1375,7 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
-end)
+end))
 
 -- ==========================================
 -- ПОГОДА
@@ -1493,10 +1542,9 @@ createButton(weatherPage, "Matrix World (Зеленая Матрица)", "Weath
 createButton(weatherPage, "Silent Hill Fog (Туман)", "WeatherFog", function() applyWeatherTheme("Foggy") end)
 
 -- ==========================================
--- VIP & TROLL FUNCTIONS (С ПОЛУПРОРАЧНЫМ ОВЕРЛЕЕМ ПРЕМИУМ ПОДПИСКИ)
+-- VIP & TROLL FUNCTIONS (С ПОЛУПРОЗРАЧНЫМ ОВЕРЛЕЕМ)
 -- ==========================================
 
--- Контейнер для VIP элементов (доступен для просмотра сквозь полупрозрачный оверлей, но заблокирован)
 local VipControlsFrame = Instance.new("Frame")
 VipControlsFrame.Size = UDim2.new(1, 0, 0, 0)
 VipControlsFrame.BackgroundTransparency = 1
@@ -1527,19 +1575,18 @@ createToggle(VipControlsFrame, "8. Ragdoll Mode (Падение в рэгдол�
 createToggle(VipControlsFrame, "9. Fake Chat Spam (Спам в чат)", "FakeChat", Config.FakeChat_Enabled, function(v) if Config.VIPUnlocked then Config.FakeChat_Enabled = v end end)
 createToggle(VipControlsFrame, "10. Invisible Arms (Невидимые руки)", "InvisArms", Config.InvisibleArms_Enabled, function(v) if Config.VIPUnlocked then Config.InvisibleArms_Enabled = v end end)
 
--- Полупрозрачный оверлей поверх функций, сообщающий о необходимости Premium подписки
+-- ЧЕРНО-ПОЛУПРОЗРАЧНЫЙ ОВЕРЛЕЙ БЛОКИРОВКИ ВКЛАДКИ VIP
 local PremiumLockOverlay = Instance.new("Frame")
 PremiumLockOverlay.Size = UDim2.new(1, 0, 1, 0)
-PremiumLockOverlay.BackgroundColor3 = Color3.fromRGB(15, 17, 26)
-PremiumLockOverlay.BackgroundTransparency = 0.45 -- Прозрачный оверлей, чтобы функции были видны насквозь
+PremiumLockOverlay.BackgroundColor3 = Color3.fromRGB(10, 12, 18)
+PremiumLockOverlay.BackgroundTransparency = 0.35 -- Черно-прозрачный оверлей
 PremiumLockOverlay.ZIndex = 5
 PremiumLockOverlay.Parent = vipPage
 
 local LockCenterCard = Instance.new("Frame")
-LockCenterCard.Size = UDim2.new(0, 320, 0, 160)
-LockCenterCard.Position = UDim2.new(0.5, -160, 0.5, -80)
-LockCenterCard.BackgroundColor3 = Color3.fromRGB(22, 24, 34)
-LockCenterCard.BackgroundTransparency = 0.1
+LockCenterCard.Size = UDim2.new(0, 340, 0, 160)
+LockCenterCard.Position = UDim2.new(0.5, -170, 0.5, -80)
+LockCenterCard.BackgroundColor3 = Color3.fromRGB(20, 22, 32)
 LockCenterCard.ZIndex = 6
 LockCenterCard.Parent = PremiumLockOverlay
 
@@ -1551,11 +1598,11 @@ local LockCardStroke = Instance.new("UIStroke")
 LockCardStroke.Thickness = 2
 LockCardStroke.Color = Color3.fromRGB(255, 215, 0)
 LockCardStroke.Parent = LockCenterCard
-addGradient(LockCardStroke, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 100, 0), 45, false)
+addGradient(LockCardStroke, Color3.fromRGB(255, 215, 0), Color3.fromRGB(200, 230, 255), 45, false)
 
 local LockIcon = Instance.new("TextLabel")
 LockIcon.Size = UDim2.new(1, 0, 0, 35)
-LockIcon.Position = UDim2.new(0, 0, 0, 15)
+LockIcon.Position = UDim2.new(0, 0, 0, 12)
 LockIcon.BackgroundTransparency = 1
 LockIcon.Text = "🔒"
 LockIcon.TextSize = 26
@@ -1564,20 +1611,20 @@ LockIcon.Parent = LockCenterCard
 
 local LockMsgTitle = Instance.new("TextLabel")
 LockMsgTitle.Size = UDim2.new(1, 0, 0, 25)
-LockMsgTitle.Position = UDim2.new(0, 0, 0, 52)
+LockMsgTitle.Position = UDim2.new(0, 0, 0, 48)
 LockMsgTitle.BackgroundTransparency = 1
-LockMsgTitle.Text = "Требуется подписка Premium!"
+LockMsgTitle.Text = "Требуется Premium или Platinum!"
 LockMsgTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
 LockMsgTitle.Font = Config.Font_Main
-LockMsgTitle.TextSize = 14
+LockMsgTitle.TextSize = 13
 LockMsgTitle.ZIndex = 7
 LockMsgTitle.Parent = LockCenterCard
 
 local LockMsgSub = Instance.new("TextLabel")
 LockMsgSub.Size = UDim2.new(1, -20, 0, 35)
-LockMsgSub.Position = UDim2.new(0, 10, 0, 78)
+LockMsgSub.Position = UDim2.new(0, 10, 0, 75)
 LockMsgSub.BackgroundTransparency = 1
-LockMsgSub.Text = "Функции ниже видны для ознакомления, но для их активации необходима активная подписка."
+LockMsgSub.Text = "Функции видны для ознакомления. Для разблокировки необходима активная подписка Premium или Platinum."
 LockMsgSub.TextColor3 = Color3.fromRGB(180, 185, 205)
 LockMsgSub.Font = Config.Font_Main
 LockMsgSub.TextSize = 10
@@ -1605,7 +1652,7 @@ addGradient(GoToSubBtn, Color3.fromRGB(255, 215, 0), Color3.fromRGB(255, 120, 0)
 -- ==========================================
 local SubOverlay = Instance.new("Frame")
 SubOverlay.Size = UDim2.new(1, -180, 1, 0)
-SubOverlay.Position = UDim2.new(1, 0, 0, 0) -- Сдвинуто для свайп-анимации выезда
+SubOverlay.Position = UDim2.new(1, 0, 0, 0)
 SubOverlay.BackgroundColor3 = Color3.fromRGB(14, 15, 20)
 SubOverlay.ZIndex = 10
 SubOverlay.Visible = false
@@ -1805,28 +1852,41 @@ LinkBox.Parent = SubOverlay
 SubApplyBtn.MouseButton1Click:Connect(function()
     local code = SubPromoBox.Text
     if code == "Dielin123" then
+        -- Звук активации Premium 17161225362
+        playSound(17161225362)
+
         SubStatusMsg.Text = 'Поздравляем с покупкой "Premium Status" вам теперь доступны новые функции.'
         SubStatusMsg.TextColor3 = Color3.fromRGB(255, 215, 0)
         SubStatusMsg.Visible = true
         Config.VIPUnlocked = true
         BadgeLabel.Text = "Premium Status"
         BadgeLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+        
         TweenService:Create(PremiumLockOverlay, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-        TweenService:Create(LockCenterCard, TweenInfo.new(0.4), {Size = UDim2.new(0, 0, 0, 0), Position = LockCenterCard.Position + UDim2.new(0, 160, 0, 80)}):Play()
+        TweenService:Create(LockCenterCard, TweenInfo.new(0.4), {Size = UDim2.new(0, 0, 0, 0), Position = LockCenterCard.Position + UDim2.new(0, 170, 0, 80)}):Play()
         task.wait(0.4)
         PremiumLockOverlay.Visible = false
+
     elseif code == "Dielin12345" then
+        -- Звук активации Platinum 127675253015979
+        playSound(127675253015979)
+
         SubStatusMsg.Text = 'Поздравляем с покупкой "Platinum Status" вам теперь доступны новые функции.'
         SubStatusMsg.TextColor3 = Color3.fromRGB(200, 230, 255)
         SubStatusMsg.Visible = true
         Config.VIPUnlocked = true
         BadgeLabel.Text = "Platinum Status"
         BadgeLabel.TextColor3 = Color3.fromRGB(200, 230, 255)
+        
         TweenService:Create(PremiumLockOverlay, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-        TweenService:Create(LockCenterCard, TweenInfo.new(0.4), {Size = UDim2.new(0, 0, 0, 0), Position = LockCenterCard.Position + UDim2.new(0, 160, 0, 80)}):Play()
+        TweenService:Create(LockCenterCard, TweenInfo.new(0.4), {Size = UDim2.new(0, 0, 0, 0), Position = LockCenterCard.Position + UDim2.new(0, 170, 0, 80)}):Play()
         task.wait(0.4)
         PremiumLockOverlay.Visible = false
+
     else
+        -- Звук неверного промокода 106796270505945
+        playSound(106796270505945)
+
         SubStatusMsg.Text = "Неверный промокод!"
         SubStatusMsg.TextColor3 = Color3.fromRGB(255, 80, 80)
         SubStatusMsg.Visible = true
@@ -1836,7 +1896,7 @@ end)
 -- ==========================================
 -- ИГРОВЫЕ ЦИКЛЫ ДЛЯ ТРОЛЛИНГА
 -- ==========================================
-RunService.RenderStepped:Connect(function()
+table.insert(Connections, RunService.RenderStepped:Connect(function()
     if Config.VIPUnlocked then
         if Config.RainbowChar_Enabled and LocalPlayer.Character then
             local hue = tick() % 5 / 5
@@ -1880,28 +1940,33 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
-end)
+end))
 
 task.spawn(function()
-    while true do
+    while ScreenGui and ScreenGui.Parent do
         task.wait(0.08)
         if Config.VIPUnlocked and Config.AutoClick_Enabled then
             pcall(function()
-                mouse1click()
+                if mouse1click then
+                    mouse1click()
+                else
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+                end
             end)
         end
     end
 end)
 
-RunService.Heartbeat:Connect(function()
+table.insert(Connections, RunService.Heartbeat:Connect(function()
     if Config.VIPUnlocked and Config.FlingAura_Enabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = LocalPlayer.Character.HumanoidRootPart
         hrp.AssemblyLinearVelocity = Vector3.new(math.random(-300, 300), 4000, math.random(-300, 300))
     end
-end)
+end))
 
 task.spawn(function()
-    while true do
+    while ScreenGui and ScreenGui.Parent do
         task.wait(6)
         if Config.VIPUnlocked and Config.FakeChat_Enabled then
             pcall(function()
@@ -1987,7 +2052,7 @@ populateTeleportTab()
 -- ==========================================
 -- ВСПОМОГАТЕЛЬНЫЕ ЦИКЛЫ И МЕХАНИКИ
 -- ==========================================
-UserInputService.InputBegan:Connect(function(input, gpe)
+table.insert(Connections, UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if Config.VIPUnlocked and Config.ClickTP_Enabled and input.UserInputType == Enum.UserInputType.MouseButton1 and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
         local mouse = LocalPlayer:GetMouse()
@@ -1995,29 +2060,29 @@ UserInputService.InputBegan:Connect(function(input, gpe)
             LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
         end
     end
-end)
+end))
 
-UserInputService.JumpRequest:Connect(function()
+table.insert(Connections, UserInputService.JumpRequest:Connect(function()
     if Config.InfJump_Enabled and LocalPlayer.Character then
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
     end
-end)
+end))
 
-RunService.RenderStepped:Connect(function()
+table.insert(Connections, RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if char and char:FindFirstChild("HumanoidRootPart") and Config.Spin_Enabled then
         char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(Config.Spin_Speed), 0)
     end
-end)
+end))
 
-RunService.Stepped:Connect(function()
+table.insert(Connections, RunService.Stepped:Connect(function()
     if Config.Noclip_Enabled and LocalPlayer.Character then
         for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
             if part:IsA("BasePart") then part.CanCollide = false end
         end
     end
-end)
+end))
 
 local menuOpen = true
 ToggleButton.MouseButton1Click:Connect(function()
@@ -2033,4 +2098,83 @@ ToggleButton.MouseButton1Click:Connect(function()
             if not menuOpen then MainFrame.Visible = false end
         end)
     end
+end)
+
+-- ==========================================
+-- ПОЛНОЕ ОТКЛЮЧЕНИЕ / ОЧИСТКА СКРИПТА
+-- ==========================================
+local function UnloadScript()
+    -- 1. Отключение всех Listeners & RenderStepped циклов
+    for _, conn in ipairs(Connections) do
+        if conn and conn.Connected then
+            pcall(function() conn:Disconnect() end)
+        end
+    end
+    Connections = {}
+
+    -- 2. Очистка ESP, Drawings и Highlight
+    for uId, tracer in pairs(DrawingCache) do
+        pcall(function() tracer:Remove() end)
+    end
+    DrawingCache = {}
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            local hl = player.Character:FindFirstChild("DielinHL")
+            if hl then hl:Destroy() end
+            
+            if player.Character:FindFirstChild("Head") then
+                local tag = player.Character.Head:FindFirstChild("DielinTag")
+                if tag then tag:Destroy() end
+            end
+
+            if player ~= LocalPlayer and player.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = player.Character.HumanoidRootPart
+                hrp.Size = Vector3.new(2, 2, 1)
+                hrp.Transparency = 1
+            end
+        end
+    end
+
+    -- 3. Очистка кастомных эффектов FX
+    if currentTrail then currentTrail:Destroy() end
+    if currentAtt0 then currentAtt0:Destroy() end
+    if currentAtt1 then currentAtt1:Destroy() end
+    if currentParticle then currentParticle:Destroy() end
+
+    -- 4. Сброс настроек освещения
+    pcall(function()
+        Lighting.Ambient = Config.OriginalAmbient
+        Lighting.OutdoorAmbient = Config.OriginalOutdoorAmbient
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 2
+        Lighting.FogEnd = 100000
+        resetSky()
+    end)
+
+    -- 5. Восстановление свойств локального игрока
+    if LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.WalkSpeed = 16
+            hum.JumpPower = 50
+            hum.PlatformStand = false
+        end
+
+        for _, p in ipairs(LocalPlayer.Character:GetDescendants()) do
+            if p:IsA("BasePart") or p:IsA("Decal") then
+                p.Transparency = 0
+            end
+        end
+    end
+
+    -- 6. Удаление всех интерфейсов
+    pcall(function() ScreenGui:Destroy() end)
+end
+
+FullCloseBtn.MouseButton1Click:Connect(function()
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+    TweenService:Create(MainFrame, tweenInfo, {Size = UDim2.new(0, 0, 0, 0), Position = MainFrame.Position + UDim2.new(0, 335, 0, 240)}):Play()
+    task.wait(0.3)
+    UnloadScript()
 end)
